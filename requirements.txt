@@ -1,0 +1,14 @@
+# Main app environment (UI, preprocessing, VAD, diarization, scoring). Python 3.10-3.12.
+gradio>=5.0
+jiwer>=3.0
+soundfile
+numpy
+pandas
+noisereduce
+pyloudnorm
+torch
+silero-vad
+pyannote.audio>=4.0
+# only needed for the cloud models (ALLOW_CLOUD_MODELS=1)
+openai
+cohere
