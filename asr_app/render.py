@@ -1,19 +1,27 @@
-"""Chat-style HTML for the reference and model transcripts (agent on one side, customer on the other)."""
+"""HTML for the app bar, status messages, score cards and chat-style transcripts."""
 import html
 
-STYLE = """
+ARABIC_FONT = '"IBM Plex Sans Arabic","Noto Naskh Arabic","Segoe UI",sans-serif'
+
+STYLE = f"""
 <style>
-.chat{font-family:system-ui,-apple-system,"Segoe UI","Noto Naskh Arabic",sans-serif;display:flex;flex-direction:column;gap:6px;
-      max-height:640px;overflow-y:auto;padding:8px;border-radius:10px;background:var(--block-background-fill)}
-.msg{max-width:85%;padding:8px 12px;border-radius:12px;line-height:1.6;font-size:15px;color:#111}
-.msg .who{font-size:11px;opacity:.7;margin-bottom:2px;direction:ltr;text-align:left}
-.agent{align-self:flex-start;background:#e8f0fe}
-.customer{align-self:flex-end;background:#e6f4ea}
-.ivr{align-self:center;background:#eee;font-style:italic;color:#555}
-.unknown{align-self:flex-start;background:#fdf3e1}
-.flag{font-size:11px;color:#b45309;direction:ltr;text-align:left}
-.empty{opacity:.5;font-style:italic}
-.chat-empty{padding:24px;text-align:center;opacity:.6}
+.chat{{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow-y:auto;padding:4px 2px}}
+.msg{{max-width:86%;padding:10px 14px;border-radius:14px;color:var(--body-text-color);
+      border:1px solid var(--border-color-primary)}}
+.msg .who{{font-size:11.5px;color:var(--body-text-color-subdued);margin-bottom:3px;direction:ltr;text-align:left;
+           font-variant-numeric:tabular-nums}}
+.msg .say{{font-family:{ARABIC_FONT};font-size:16px;line-height:1.85}}
+.agent{{align-self:flex-start;border-bottom-left-radius:4px;
+        background:color-mix(in srgb,#2563eb 11%,var(--block-background-fill))}}
+.customer{{align-self:flex-end;border-bottom-right-radius:4px;
+           background:color-mix(in srgb,#0d9488 13%,var(--block-background-fill))}}
+.ivr{{align-self:center;font-style:italic;background:var(--background-fill-secondary)}}
+.unknown{{align-self:stretch;max-width:100%;background:var(--background-fill-secondary)}}
+.flag{{font-size:11.5px;color:#b45309;direction:ltr;text-align:left;margin-top:3px}}
+.no-text{{opacity:.55;font-style:italic}}
+.chat-meta{{font-size:12px;color:var(--body-text-color-subdued);padding:0 2px 8px}}
+.chat-empty{{padding:56px 24px;text-align:center;color:var(--body-text-color-subdued);font-size:14px;
+             border:1px dashed var(--border-color-primary);border-radius:12px}}
 </style>
 """
 
@@ -24,22 +32,22 @@ def _mmss(x):
 
 def _bubble(role, who, text, flag=""):
     cls = role if role in ("agent", "customer", "ivr") else "unknown"
-    body = html.escape(text) if text else '<span class="empty">(no text)</span>'
+    body = html.escape(text) if text else '<span class="no-text">(no text)</span>'
     f = f'<div class="flag">{html.escape(flag)}</div>' if flag else ""
     return (f'<div class="msg {cls}"><div class="who">{html.escape(who)}</div>'
-            f'<div dir="rtl">{body}</div>{f}</div>')
+            f'<div class="say" dir="rtl">{body}</div>{f}</div>')
 
 
 def empty(msg):
-    return STYLE + f'<div class="chat"><div class="chat-empty">{html.escape(msg)}</div></div>'
+    return STYLE + f'<div class="chat-empty">{html.escape(msg)}</div>'
 
 
 def reference_html(items, meta=None):
     if not items:
-        return empty("No reference transcript for this audio. Upload one (JSON or SRT) to see it here and get a score.")
+        return empty("No reference yet. Upload a JSON or SRT transcript to see it here and get a score.")
     head = ""
     if meta and meta.get("call_id"):
-        head = f'<div class="who" style="padding:4px 2px">{html.escape(str(meta.get("call_id")))}</div>'
+        head = f'<div class="chat-meta">{html.escape(str(meta.get("call_id")))}</div>'
     parts = []
     for i in items:
         role = i.get("role") or ""
@@ -64,3 +72,52 @@ def model_html(rows, show_blank=False):
         who = f"{role.capitalize() or 'Segment'}{spk} · {_mmss(r['start'])}–{_mmss(r['end'])}"
         parts.append(_bubble(role, who, r["text"], r.get("status", "")))
     return STYLE + '<div class="chat">' + "".join(parts) + "</div>"
+
+
+def header_html(ready, total, cloud_on):
+    cloud = ('<span class="chip chip-warn">Cloud on: consented audio only</span>' if cloud_on
+             else '<span class="chip">Local only</span>')
+    return (f'<header class="appbar"><div><h1>Egyptian Arabic ASR Comparison</h1>'
+            f'<p>Transcribe a call with any model and score it against the reference.</p></div>'
+            f'<div class="chips"><span class="chip">{ready} of {total} models ready</span>{cloud}</div></header>')
+
+
+def section(title):
+    return f'<div class="section-title">{html.escape(title)}</div>'
+
+
+def status_html(kind, message):
+    """kind: ok | error | info"""
+    return f'<div class="status status-{kind}">{html.escape(message)}</div>'
+
+
+def _pct(x):
+    return "–" if x is None else f"{x:.1%}"
+
+
+def _metric(label, value, hint="", main=False):
+    sub = f'<div class="metric-hint">{html.escape(hint)}</div>' if hint else ""
+    return (f'<div class="metric{" metric-main" if main else ""}"><div class="metric-label">{html.escape(label)}</div>'
+            f'<div class="metric-value">{value}</div>{sub}</div>')
+
+
+def score_html(res, model_name):
+    if not res:
+        return (f'<section class="score"><div class="score-title">{html.escape(model_name)}</div>'
+                '<p class="score-note">No reference transcript, so no score. Upload one to compare.</p></section>')
+    roles = res["roles"]
+    cards = [_metric("WER", _pct(res["wer"]), f"{res['ref_words']} reference words", main=True),
+             _metric("CER", _pct(res["cer"]))]
+    for role, label in (("agent", "Agent WER"), ("customer", "Customer WER")):
+        r = roles.get(role)
+        cards.append(_metric(label, _pct(r and r["wer"]), f"{r['ref_words']} words" if r else "needs diarization"))
+    terms = ""
+    if res["terms"]:
+        chips = "".join(f'<span class="term{" term-miss" if hit < n else ""}" dir="rtl">{html.escape(t)} '
+                        f'<b dir="ltr">{hit}/{n}</b></span>' for t, n, hit in res["terms"])
+        terms = f'<div class="terms"><span class="terms-label">Key terms found</span>{chips}</div>'
+    return (f'<section class="score"><div class="score-title">{html.escape(model_name)}</div>'
+            f'<div class="metrics">{"".join(cards)}</div>{terms}'
+            '<p class="score-note">Lower is better. The references look model-generated, so these measure agreement '
+            'with them, and differences under 2 points are noise. Per-role WER also counts diarization mistakes.</p>'
+            '</section>')

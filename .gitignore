@@ -4,5 +4,8 @@ work/
 results/
 logs/
 venvs/
+model_cache/
+checkpoints/
+.uv_cache/
 __pycache__/
 .env

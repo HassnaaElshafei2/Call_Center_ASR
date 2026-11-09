@@ -6,9 +6,11 @@ numpy
 pandas
 noisereduce
 pyloudnorm
+nara-wpe
 torch
 silero-vad
 pyannote.audio>=4.0
 # only needed for the cloud models (ALLOW_CLOUD_MODELS=1)
 openai
 cohere
+httpx

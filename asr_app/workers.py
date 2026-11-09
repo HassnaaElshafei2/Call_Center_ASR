@@ -19,6 +19,8 @@ class WorkerError(RuntimeError):
 
 
 def env_python(env: str):
+    if os.name == "nt":
+        return ENVS_DIR / env / "Scripts" / "python.exe"
     return ENVS_DIR / env / "bin" / "python"
 
 

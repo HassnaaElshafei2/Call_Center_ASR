@@ -18,6 +18,13 @@ MAX_WORKERS = int(os.environ.get("ASR_MAX_WORKERS", "2"))
 
 HF_TOKEN = os.environ.get("HF_TOKEN", "")  # needed for pyannote (gated) and Cohere Arabic (gated)
 
+# Model downloads stay next to the app (not in the user profile) unless overridden. Workers inherit these.
+# Set before huggingface_hub is imported: it reads them once, at import.
+MODEL_CACHE = Path(os.environ.get("ASR_MODEL_CACHE", APP_DIR / "model_cache"))
+os.environ.setdefault("HF_HOME", str(MODEL_CACHE / "huggingface"))
+os.environ.setdefault("TORCH_HOME", str(MODEL_CACHE / "torch"))
+os.environ.setdefault("NEMO_CACHE_DIR", str(MODEL_CACHE / "nemo"))
+
 AUDIO_EXTS = (".wav", ".mp3", ".m4a", ".ogg", ".flac", ".aac", ".wma", ".amr", ".opus")
 REF_EXTS = (".json", ".srt", ".txt")
 

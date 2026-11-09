@@ -40,25 +40,3 @@ def score(ref_items, rows, include_ivr=False, terms=KEY_TERMS):
         if n_ref:
             res["terms"].append((t, n_ref, min(n_ref, _count(hyp, nt))))
     return res
-
-
-def _fmt(x):
-    return "–" if x is None else f"{x:.3f}"
-
-
-def to_markdown(res, model_name):
-    lines = [f"### Score: {model_name}",
-             "| | WER | CER | reference words |", "|---|---|---|---|",
-             f"| **Overall** | **{_fmt(res['wer'])}** | {_fmt(res['cer'])} | {res['ref_words']} |"]
-    for role, r in res["roles"].items():
-        lines.append(f"| {role.capitalize()} | {_fmt(r['wer'])} | {_fmt(r['cer'])} | {r['ref_words']} |")
-    if not res["roles"]:
-        lines.append("| Agent / Customer | – | – | turn on diarization for per-role scores |")
-    if res["terms"]:
-        lines += ["", "| Key term | found / in reference |", "|---|---|"]
-        lines += [f"| {t} | {h} / {r} |" for t, r, h in res["terms"]]
-    lines += ["", "<sub>Lower is better. Text is normalised (diacritics, alef/ya/ta-marbuta, punctuation). "
-                  "Per-role WER compares all agent (or customer) words in order, so diarization mistakes "
-                  "count against it. The references look model-generated, so treat these as agreement "
-                  "scores, and small differences (< 0.02) as noise.</sub>"]
-    return "\n".join(lines)

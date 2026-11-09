@@ -10,6 +10,10 @@ cd "$(dirname "$0")"
 ENVS_DIR="${ASR_ENVS_DIR:-$PWD/venvs}"
 command -v uv >/dev/null || { echo "Installing uv..."; pip install -q uv; }
 mkdir -p "$ENVS_DIR"
+case "${OSTYPE:-}" in
+  msys*|cygwin*) PY_REL="Scripts/python.exe" ;;   # Windows (Git Bash)
+  *)             PY_REL="bin/python" ;;
+esac
 
 torch_pkgs() {   # install torch first so later packages reuse it
   local py=$1; shift
@@ -19,7 +23,7 @@ torch_pkgs() {   # install torch first so later packages reuse it
 
 make_env() {
   local name=$1
-  local py="$ENVS_DIR/$name/bin/python"
+  local py="$ENVS_DIR/$name/$PY_REL"
   echo "=== $name ==="
   [ -x "$py" ] || uv venv --python 3.11 "$ENVS_DIR/$name"
   case $name in
@@ -47,4 +51,14 @@ make_env() {
 
 ENVS=("$@")
 [ ${#ENVS[@]} -eq 0 ] && ENVS=(nemo hf qwen omni whisperx enhance)
-for e in "${ENVS[@]}"; do make_env "$e" || echo "!!! $e failed: the other models still work"; done
+for e in "${ENVS[@]}"; do
+  # A subshell outside any `if`/`||`, or bash would ignore set -e inside make_env and report a broken install as ready.
+  set +e
+  ( set -e; make_env "$e" )
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ]; then
+    rm -rf "${ENVS_DIR:?}/$e"     # a half-installed environment would show as ready in the app
+    echo "!!! $e failed: the other models still work"
+  fi
+done

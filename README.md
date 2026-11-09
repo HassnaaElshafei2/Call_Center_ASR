@@ -54,12 +54,13 @@ Public links (`share=True`) are switched off on purpose: they expose real custom
 ## Using it
 1. **Example call**: choose one of the calls in `data/calls/`. Its reference JSON is matched by the
    recording id in the file name. Or upload any audio, with an optional JSON/SRT reference.
-2. **Model**: `[name]` shows who tried it. ☁ cloud models (OpenAI, Cohere API) are disabled unless the
-   app is started with `ALLOW_CLOUD_MODELS=1` plus `OPENAI_API_KEY` / `COHERE_API_KEY`, and only
-   for synthetic or consented audio.
-3. **Apply preprocessing**: runs the ticked steps (high-pass + dynaudnorm, noise reduction,
-   super-resolution, -23 LUFS loudness). Only the ASR models hear the processed audio; diarization
-   always uses the original.
+2. **Model**: ☁ cloud models (OpenRouter, OpenAI, Cohere API) are disabled
+   unless the app is started with `ALLOW_CLOUD_MODELS=1` plus the matching key (`OPENROUTER_API_KEY`,
+   `OPENAI_API_KEY`, `COHERE_API_KEY`), and only for synthetic or consented audio. Models without their
+   key show as "needs ..." in the status panel and are skipped by **Run all installed models**.
+3. **Apply preprocessing**: ticks every available step (high-pass + dynaudnorm, noise reduction,
+   super-resolution if its environment is installed, -23 LUFS loudness), and you can then untick any
+   you don't want. Only the ASR models hear the processed audio; diarization always uses the original.
 4. **Transcribe**. Every run is added to the table and to `results/runs.csv`, and its JSON + SRT can
    be downloaded. **Run all installed models** fills the table for one call in one click.
 

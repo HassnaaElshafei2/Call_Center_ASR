@@ -29,10 +29,9 @@ class ModelSpec:
         return self.backend == "cloud"
 
     def label(self):
-        tag = f"  [{self.tried_by}]"
         if self.cloud:
-            tag += "  ☁ cloud" + ("" if ALLOW_CLOUD else " (disabled)")
-        return self.name + tag
+            return f"{self.name}  ☁ cloud" + ("" if ALLOW_CLOUD else " (disabled)")
+        return self.name
 
 
 MODELS = [
@@ -59,6 +58,17 @@ MODELS = [
               note="Gated on Hugging Face: accept the terms first."),
     ModelSpec("openai-gpt-transcribe", "OpenAI gpt-transcribe (API)", "Esraa", backend="cloud"),
     ModelSpec("cohere-api", "Cohere Transcribe (API)", "Esraa", backend="cloud"),
+    # --- OpenRouter (OPENROUTER_API_KEY) ---
+    ModelSpec("or-scribe-v2", "ElevenLabs Scribe v2 (OpenRouter)", "Hassnaa", backend="cloud",
+              note="Best published Egyptian result found (13.1% WER, code-switching test). ZDR routing required."),
+    ModelSpec("or-gpt-4o-transcribe", "OpenAI GPT-4o Transcribe (OpenRouter)", "Hassnaa", backend="cloud",
+              note="No ZDR endpoint listed on OpenRouter."),
+    ModelSpec("or-gpt-transcribe", "OpenAI gpt-transcribe (OpenRouter)", "Hassnaa", backend="cloud",
+              note="No ZDR endpoint listed on OpenRouter."),
+    ModelSpec("or-gemini-3.8-flash", "Gemini 3.8 Flash (OpenRouter)", "Hassnaa", backend="cloud",
+              note="ZDR routing required. The references look Gemini-made, so its scores may be flattered."),
+    ModelSpec("or-gemini-4-argon", "Gemini 4 Argon (OpenRouter)", "Hassnaa", backend="cloud",
+              note="ZDR routing required. The references look Gemini-made, so its scores may be flattered."),
 ]
 BY_KEY = {m.key: m for m in MODELS}
 BY_LABEL = {m.label(): m for m in MODELS}
@@ -66,7 +76,10 @@ BY_LABEL = {m.label(): m for m in MODELS}
 
 def status(m: ModelSpec) -> str:
     if m.cloud:
-        return "ready" if ALLOW_CLOUD else "disabled (set ALLOW_CLOUD_MODELS=1, consented audio only)"
+        if not ALLOW_CLOUD:
+            return "disabled (set ALLOW_CLOUD_MODELS=1, consented audio only)"
+        missing = cloud.missing_key(m.key)
+        return f"needs {missing}" if missing else "ready"
     return "ready" if env_installed(m.env) else f"not installed (./setup_envs.sh {m.env})"
 
 
