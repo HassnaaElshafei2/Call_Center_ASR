@@ -1,0 +1,15 @@
+# torch: install the build for your machine first (see README), e.g. CUDA 13 on the DGX Spark:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu130
+fastapi==0.135.1
+uvicorn[standard]==0.41.0
+python-multipart==0.0.20
+transformers==5.20.2
+accelerate==1.15.0
+safetensors==0.8.0
+sentencepiece==0.2.3
+tokenizers==0.23.3
+soundfile==0.13.1
+scipy>=1.13
+numpy>=1.26
+# optional: speaker diarization for mono recordings (needs HF_TOKEN with the model's terms accepted)
+# pyannote.audio==4.0.1

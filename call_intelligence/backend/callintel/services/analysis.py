@@ -20,7 +20,7 @@ from .identity import link_customer
 from .metrics import measure
 
 log = logging.getLogger(__name__)
-PROMPT_VERSION = "2026-11-20.1"
+PROMPT_VERSION = "2026-11-20.2"
 MOMENTS = ("problem_stated", "frustration", "escalation_request", "hold", "solution_offered", "resolution",
            "promise", "gratitude", "upsell", "complaint", "compliance_issue", "confusion")
 OPPORTUNITY = ("upsell", "cross_sell", "retention_offer", "loyalty", "referral")
@@ -78,12 +78,27 @@ produced by speech recognition, so expect some wrong words: judge by meaning. Sp
 
 Rules:
 - Base every label on the transcript only. Cite turn numbers [n] as evidence.
-- resolution: "resolved" = the customer's problem or question was fully handled in this call; "partly_resolved" =
-  some progress or a next step promised but the problem remains; "not_resolved" = nothing solved.
-- satisfaction is the customer's predicted satisfaction at the end of the call (1 very unhappy ... 5 very happy).
+- resolution (be strict; a polite ending is not a resolution):
+  "resolved" = the problem was actually fixed or the question fully answered DURING this call (card unblocked,
+  information given, change made) and nothing is left waiting.
+  "partly_resolved" = the customer still has to wait for something: a refund in X days, a technician visit, a new
+  delivery date, an escalation, a complaint ticket, a callback, a document to send, a branch visit; or only part of
+  the request was handled.
+  "not_resolved" = the request was refused or impossible, the agent couldn't help, or the customer is left without a
+  clear way forward. A repeat failure (e.g. technician didn't come again) that is only escalated is at best partly
+  resolved.
+- satisfaction is the customer's predicted satisfaction at the end of the call (1 very unhappy ... 5 very happy),
+  from the customer's own words and tone, not the agent's politeness: thanks at the end is normal and doesn't make a
+  5. A customer who was frustrated and is still waiting for a fix is usually 2-3. Give 5 only for clear delight.
+- mood: judge the customer's real mood; an angry customer who calms down but still has the problem ends "worried" or
+  "frustrated", not "calm".
 - mood_changes: only customer turns where their mood clearly changes. moments: the turning points of the call.
 - customer.name / customer.phone: only if the customer says them (phone as digits only, e.g. "01012345678"), else null.
-- scorecard: one entry per KPI listed below; "na" when the KPI doesn't apply to this call.
+- scorecard: one entry per KPI listed below; "na" when the KPI doesn't apply to this call. Score like a strict QA
+  auditor: "pass" only if the agent clearly did it; anything skipped, rushed, unclear or wrong is "fail" with the
+  reason. Most real calls miss at least one item.
+- risks.churn: "high" if the customer threatens to leave, close the account or go to a competitor, or is angry about
+  a repeated failure; "medium" if they are unhappy and still waiting for a fix.
 - promises: commitments the agent or company made (callback, technician visit, refund), with days until due if said.
 - actions: what the company should do next for this customer or this agent (none if nothing is needed). If a message
   to the customer helps (apology, offer, follow-up), write draft_message in polite Egyptian Arabic; never invent
@@ -235,13 +250,16 @@ def _alerts(call: Call, d: dict):
 
 
 def _mark_repeat(db: Session, call: Call):
-    """Same customer, same reason within 14 days before this call -> a repeat call (first-call resolution failed)."""
+    """The same customer called within the 14 days before this call, about the same reason or after a call that
+    wasn't fully resolved -> a repeat call (first-call resolution failed)."""
     call.repeat_of = None
-    if not call.customer_id or not call.reason_code:
+    if not call.customer_id:
         return
-    prev = (db.query(Call).filter(Call.customer_id == call.customer_id, Call.id != call.id,
-                                  Call.reason_code == call.reason_code, Call.started_at < call.started_at,
-                                  Call.started_at >= call.started_at - timedelta(days=14))
-            .order_by(Call.started_at.desc()).first())
+    prevs = (db.query(Call).filter(Call.customer_id == call.customer_id, Call.id != call.id,
+                                   Call.started_at < call.started_at,
+                                   Call.started_at >= call.started_at - timedelta(days=14))
+             .order_by(Call.started_at.desc()).all())
+    prev = next((p for p in prevs if (call.reason_code and p.reason_code == call.reason_code)
+                 or (p.resolution and p.resolution != "resolved")), None)
     if prev:
         call.repeat_of = prev.id

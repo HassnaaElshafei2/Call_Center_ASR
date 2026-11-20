@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, ClipboardCheck, Cpu, FileCog, History, Plus, RotateCw, Save, Tags, Trash2, UserCog, Users } from 'lucide-react'
+import { Activity, ClipboardCheck, Lock, Cpu, FileCog, History, Plus, RotateCw, Save, Tags, Trash2, UserCog, Users } from 'lucide-react'
 import { api } from '@/lib/api'
-import { useAuth } from '@/lib/auth'
+import { can, useAuth } from '@/lib/auth'
 import { when } from '@/lib/format'
 import { ROLE_LABEL } from '@/components/labels'
 import { Topbar, useEnt } from '@/components/Shell'
-import { Modal, Skeleton, useToast, Widget } from '@/components/ui'
+import { Empty, Modal, Skeleton, useToast, Widget } from '@/components/ui'
 
 const TABS: [string, string, any][] = [['status', 'System', Cpu], ['users', 'Users and roles', Users], ['categories', 'Call reasons', Tags],
   ['scorecard', 'QA scorecard', ClipboardCheck], ['agents', 'Agents', UserCog], ['enterprise', 'Recording names', FileCog], ['audit', 'Audit log', History]]
@@ -15,6 +15,12 @@ const TABS: [string, string, any][] = [['status', 'System', Cpu], ['users', 'Use
 export default function Admin() {
   const [sp, setSp] = useSearchParams()
   const tab = sp.get('tab') || 'status'
+  const { me } = useAuth()
+  const { ent } = useEnt()
+  if (me && !can(me, 'admin', ent)) return <>
+    <Topbar title="Administration" crumb="Settings" />
+    <div className="content"><Empty icon={Lock} title="Only administrators can open this page">Ask an administrator if you need a change to users, call reasons or the QA scorecard.</Empty></div>
+  </>
   return <>
     <Topbar title="Administration" crumb="Settings" />
     <div className="content">
@@ -43,8 +49,8 @@ function Status() {
       <button className="btn sm" onClick={async () => { const r = await api(`/e/${ent}/admin/retry-waiting`, { method: 'POST' }); toast(`${r.queued} calls queued again`); refetch() }}><RotateCw size={13} />Retry waiting and failed calls</button>
     </Widget>
     <Widget icon={History} title="Work queue">
-      <dl className="kv">{Object.entries(data.jobs).map(([k, v]: any) => <><dt key={k}>{k}</dt><dd className="num">{v}</dd></>)}</dl>
-      <div className="divider" /><dl className="kv">{Object.entries(data.calls).map(([k, v]: any) => <><dt key={k}>calls {k.replace('_', ' ')}</dt><dd className="num">{v}</dd></>)}</dl>
+      <dl className="kv">{Object.entries(data.jobs).map(([k, v]: any) => <Fragment key={k}><dt>{k}</dt><dd className="num">{v}</dd></Fragment>)}</dl>
+      <div className="divider" /><dl className="kv">{Object.entries(data.calls).map(([k, v]: any) => <Fragment key={k}><dt>calls {k.replace('_', ' ')}</dt><dd className="num">{v}</dd></Fragment>)}</dl>
       {data.failed_jobs.length > 0 && <details><summary className="small">Recent failures</summary>{data.failed_jobs.map((j: any) => <div key={j.id} className="tiny muted">{j.kind}: {j.error}</div>)}</details>}
     </Widget>
   </div>

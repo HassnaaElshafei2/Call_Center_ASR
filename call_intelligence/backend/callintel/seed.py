@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .models import Agent, Call, Category, Enterprise, Membership, Scorecard, Team, Turn, User
+from .models import Agent, Call, Category, Customer, Enterprise, Membership, Scorecard, Team, Turn, User
 from .security import hash_password
 from .services import identity, jobs
 
@@ -176,8 +176,10 @@ def import_scripts(db: Session, folder: Path, days: int = 28, limit: int | None 
     teams = {(t.enterprise_id, i): t for ent in TEAMS for i, t in enumerate(db.query(Team).filter_by(enterprise_id=ent).order_by(Team.name))}
     created = []
     # a few customers call twice (repeat calls, Customer 360)
-    shared = {"hs53": "hs74", "hs63": "hs72", "hs57": "hs69", "hs05": "hs33", "hs02": "hs19"}
+    # (same company, related problem: a late order and then a broken screen, a cancelled order and then its refund...)
+    shared = {"hs53": "hs36", "hs30": "hs52", "hs41": "hs65", "hs05": "hs23", "hs01": "hs76"}
     phone_of: dict[str, str] = {}
+    by_sid: dict[str, Call] = {}       # B.TECH calls are renamed after the phone, so keep them by script id
     for f in files:
         sid = f.stem
         if db.query(Call).filter_by(external_ref=f"demo:{sid}").first():
@@ -198,7 +200,7 @@ def import_scripts(db: Session, folder: Path, days: int = 28, limit: int | None 
         started = local.astimezone(timezone.utc)
         if sid in shared.values():     # the follow-up call comes 2-6 days after the first
             first = next(k for k, v in shared.items() if v == sid)
-            prev = db.query(Call).filter_by(external_ref=f"demo:{first}").first()
+            prev = by_sid.get(first)
             if prev:
                 started = prev.started_at + timedelta(days=rng.randint(2, 6), hours=rng.randint(1, 5))
         call = Call(enterprise_id=ent, external_ref=f"demo:{sid}", agent_id=agents[key].id, started_at=started,
@@ -223,6 +225,18 @@ def import_scripts(db: Session, folder: Path, days: int = 28, limit: int | None 
             call.external_ref = "btech_" + {"local": phone, "intl": "20" + phone[1:], "short": phone[1:]}[fmt]
             cust = identity.from_recording_name(db, call)
             call.customer_id = cust.id if cust else None
+        elif sid in shared or sid in shared.values():   # ADIB: no phone in the name; the demo links the pair by account
+            first = sid if sid in shared else next(k for k, v in shared.items() if v == sid)
+            prev = by_sid.get(first)
+            if prev and prev.customer_id and prev.id != call.id:
+                call.customer_id = prev.customer_id
+            else:
+                cust = Customer(enterprise_id=ent, name=_person(sc["head"].get("customer", "")) or None,
+                                identified_by="account")
+                db.add(cust)
+                db.flush()
+                call.customer_id = cust.id
+        by_sid[sid] = call
         if analyze:
             jobs.enqueue(db, "analyze_call", {"call_id": call.id}, max_attempts=3)
         else:

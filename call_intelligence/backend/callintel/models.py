@@ -94,7 +94,7 @@ class Customer(Base):
     phone_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     phone_masked: Mapped[str] = mapped_column(String(32), default="")
     phone_full: Mapped[str] = mapped_column(String(32), default="")           # revealed only to permitted roles, audited
-    identified_by: Mapped[str] = mapped_column(String(24), default="none")    # filename, transcript, manual, none
+    identified_by: Mapped[str] = mapped_column(String(24), default="none")    # filename, transcript, account, manual, none
     vip: Mapped[bool] = mapped_column(Boolean, default=False)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

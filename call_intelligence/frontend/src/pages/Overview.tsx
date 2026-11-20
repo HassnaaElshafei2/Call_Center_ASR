@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, AlertOctagon, CalendarClock, CheckCircle2, Clock3, Flame, Frown, Headphones, Lightbulb, ListTodo, Repeat2,
@@ -101,11 +101,11 @@ export default function Overview() {
               <Heat grid={data.heatmap} />
             </Widget>
             {!!data.enterprises.length && <Widget icon={Building2} title="Enterprises side by side" sub="Same period, same measures">
-              <table className="table"><thead><tr><th>Enterprise</th><th>Calls</th><th>Resolved</th><th>Satisfaction</th><th>Ended unhappy</th><th>Repeat</th></tr></thead>
+              <div className="table-wrap"><table className="table"><thead><tr><th>Enterprise</th><th>Calls</th><th>Resolved</th><th>Satisfaction</th><th>Ended unhappy</th><th>Repeat</th></tr></thead>
                 <tbody>{data.enterprises.map((e: any) => <tr key={e.id} className="click" onClick={() => nav(`/e/${e.id}/overview${toQuery(f)}`)}>
                   <td><span className="row" style={{ gap: 8 }}><span className="dot" style={{ background: e.accent }} /><b>{e.name}</b></span></td>
                   <td className="num">{e.calls}</td><td className="num">{pct(e.resolved)}</td><td className="num">{sat(e.satisfaction)}</td>
-                  <td className="num">{pct(e.negative)}</td><td className="num">{pct(e.repeat)}</td></tr>)}</tbody></table>
+                  <td className="num">{pct(e.negative)}</td><td className="num">{pct(e.repeat)}</td></tr>)}</tbody></table></div>
             </Widget>}
           </div>
 
@@ -208,7 +208,7 @@ function Heat({ grid }: { grid: number[][] }) {
   const max = Math.max(1, ...grid.flat())
   return <div className="heat" role="img" aria-label="Calls by weekday and hour">
     <span />{[...Array(24)].map((_, h) => <span key={h} style={{ textAlign: 'center' }}>{h % 3 === 0 ? h : ''}</span>)}
-    {grid.map((row, d) => <>{<span key={`l${d}`}>{DAYS[d]}</span>}{row.map((v, h) => <div key={`${d}-${h}`} className="c" title={`${DAYS[d]} ${h}:00 · ${v} calls`}
-      style={{ background: v ? `color-mix(in srgb, var(--brand) ${15 + 85 * v / max}%, transparent)` : 'var(--track)' }} />)}</>)}
+    {grid.map((row, d) => <Fragment key={d}><span>{DAYS[d]}</span>{row.map((v, h) => <div key={`${d}-${h}`} className="c" title={`${DAYS[d]} ${h}:00 · ${v} calls`}
+      style={{ background: v ? `color-mix(in srgb, var(--brand) ${15 + 85 * v / max}%, transparent)` : 'var(--track)' }} />)}</Fragment>)}
   </div>
 }

@@ -1,0 +1,62 @@
+# Sia Call Intelligence: database, web app, background worker and (optionally) the transcription service.
+#   cp .env.example .env        # then fill in LLM_API_KEY, JWT_SECRET, PHONE_HASH_KEY, ADMIN_PASSWORD
+#   docker compose up -d --build
+#   docker compose exec app python -m callintel.manage demo /app/demo_data/scripts   # optional demo calls
+# With the transcription service on a GPU machine (Mohammed's model folder in ASR_MODEL_DIR):
+#   docker compose --profile asr up -d --build
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: callintel
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-callintel-local}
+      POSTGRES_DB: callintel
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callintel"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://callintel:${POSTGRES_PASSWORD:-callintel-local}@db:5432/callintel
+    ports: ["${APP_PORT:-8000}:8000"]
+    volumes: [recordings:/data/recordings]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["python", "-m", "callintel.worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://callintel:${POSTGRES_PASSWORD:-callintel-local}@db:5432/callintel
+    volumes: [recordings:/data/recordings]
+    depends_on:
+      app: {condition: service_started}
+    restart: unless-stopped
+
+  asr:
+    profiles: ["asr"]
+    build:
+      context: ./asr_service
+      args:
+        TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cu130}
+    environment:
+      MODEL_PATH: /models/model
+      HF_TOKEN: ${HF_TOKEN:-}
+      DIARIZATION: ${DIARIZATION:-auto}
+    volumes: ["${ASR_MODEL_DIR:-./model}:/models/model:ro"]
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  recordings:

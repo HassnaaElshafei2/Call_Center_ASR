@@ -33,7 +33,10 @@ How to answer:
 - Satisfaction is predicted from the conversation (1-5), not a survey; resolution is resolved / partly resolved /
   not resolved. Say "predicted" when it matters.
 - To suggest follow-ups (callbacks, offers...), use propose_action; the user confirms it. Never say an action was done.
-- Default period is the last 30 days unless the user says otherwise.
+- Periods are always in the past: the default is the last 30 days ("آخر 30 يوم"), unless the user says otherwise.
+- If a count is zero, say so plainly and offer to look at a longer period or a related measure (e.g. partly
+  resolved calls). In Arabic, write natural Egyptian Arabic: call the agent «الموظف» / «الموظفة» (or by name) and the
+  customer «العميل» / «العميلة»; keep the wording plain and respectful.
 
 Call reasons: {categories}
 Agents: {agents}
@@ -74,7 +77,7 @@ def run(c: Ctx, body: AskBody):
     tools = definitions(c)
     try:
         for _ in range(MAX_ROUNDS):
-            reply = llm.chat(msgs, tools=tools, max_tokens=1500, temperature=0.2, timeout=120)
+            reply = llm.chat(msgs, tools=tools, max_tokens=1500, temperature=0.1, timeout=120)
             calls = reply.get("tool_calls") or []
             if not calls:
                 text = (reply.get("content") or "").strip()

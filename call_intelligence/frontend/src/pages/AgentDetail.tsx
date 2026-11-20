@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, Award, ClipboardCheck, GraduationCap, Headphones, Loader2, Smile, Sparkles, CheckCircle2 } from 'lucide-react'
@@ -67,8 +67,8 @@ export default function AgentDetail() {
             {!a.scorecard.length && <span className="small muted">No scored calls.</span>}
           </Widget>
           <Widget icon={Activity} title="How they talk" sub="Measured from timings">
-            <dl className="kv">{Object.entries(a.behaviour).map(([key, v]: any) => <><dt key={key}>{({ agent_talk_share: 'Talk share', longest_silence_s: 'Longest silence (s)', silences_over_5s: 'Silences over 5 s per call', overlaps: 'Talking over the customer per call' } as any)[key]}</dt>
-              <dd className="num">{key === 'agent_talk_share' ? pct(v.agent) : v.agent ?? '–'} <span className="faint">· team {key === 'agent_talk_share' ? pct(v.team) : v.team ?? '–'}</span></dd></>)}</dl>
+            <dl className="kv">{Object.entries(a.behaviour).map(([key, v]: any) => <Fragment key={key}><dt>{({ agent_talk_share: 'Talk share', longest_silence_s: 'Longest silence (s)', silences_over_5s: 'Silences over 5 s per call', overlaps: 'Talking over the customer per call' } as any)[key]}</dt>
+              <dd className="num">{key === 'agent_talk_share' ? pct(v.agent) : v.agent ?? '–'} <span className="faint">· team {key === 'agent_talk_share' ? pct(v.team) : v.team ?? '–'}</span></dd></Fragment>)}</dl>
           </Widget>
         </div>
         <Widget icon={Headphones} title="Recent calls">

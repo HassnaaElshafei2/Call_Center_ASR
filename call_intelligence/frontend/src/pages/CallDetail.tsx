@@ -253,9 +253,6 @@ function ReviewCard({ c, ent, cats, onDone }: any) {
     try { await api(`/e/${ent}/calls/${c.id}/review`, { method: 'POST', json: { resolution: res, satisfaction: Number(satv), reason_code: reason } }); toast('Review saved'); onDone() }
     finally { setBusy(false) }
   }
-  if (!c.needs_review && c.reviewed_at === undefined && !c.review_reason) {
-    // compact form for calls nobody flagged
-  }
   return <Widget icon={ClipboardCheck} title={c.needs_review ? 'Needs your review' : 'Review'} sub={c.review_reason || 'Approve or correct the labels'}
     style={c.needs_review ? { borderColor: 'var(--gold)' } : undefined}>
     {so && <div className="small" style={{ padding: 10, borderRadius: 10, background: 'var(--panel-2)' }}><b>Second opinion:</b> {so.agree ? 'agrees' : `disagrees (${title(so.resolution)}, ${so.satisfaction}/5)`}. <span className="muted">{so.why}</span></div>}
