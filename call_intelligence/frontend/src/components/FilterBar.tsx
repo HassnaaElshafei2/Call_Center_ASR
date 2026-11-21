@@ -4,7 +4,7 @@ import { RESOLUTION, MOODS } from './labels'
 import { useEnt } from './Shell'
 
 /** Period + the common call filters. Values live in the URL (useFilters). */
-export function FilterBar({ f, set, clear, extra, show = ['period', 'resolution', 'reason', 'agent', 'sat', 'mood'] }: {
+export function FilterBar({ f, set, clear, extra, show = ['period', 'data', 'resolution', 'reason', 'agent', 'sat', 'mood'] }: {
   f: Filters; set: (p: Filters) => void; clear: () => void; extra?: React.ReactNode; show?: string[]
 }) {
   const { meta, ent } = useEnt()
@@ -17,13 +17,16 @@ export function FilterBar({ f, set, clear, extra, show = ['period', 'resolution'
     resolution: v.split(',').map(x => RESOLUTION[x]?.label || x).join(', '), reason: v.split(',').map(catName).join(', '),
     agent: agentName(v), sat_max: `Satisfaction ≤ ${v}`, sat_min: `Satisfaction ≥ ${v}`, mood_end: `Ended ${v.replace(/,/g, ' or ')}`,
     review: 'Needs review', compliance: 'Compliance issue', repeat: 'Repeat calls', churn: `Churn risk: ${v}`, q: `“${v}”`,
-    customer: 'One customer', risk: `Risk: ${v}`, status: `Status: ${v.replace(/,/g, ', ')}`, sentiment: v, team: 'Team',
+    customer: 'One customer', data: ({ real: 'Real calls', synthetic: 'Synthetic (Mohammed)', demo: 'Demo calls', 'synthetic,demo': 'All synthetic' } as Record<string, string>)[v] ?? v, risk: `Risk: ${v}`, status: `Status: ${v.replace(/,/g, ', ')}`, sentiment: v, team: 'Team',
     date_from: `From ${v}`, date_to: `To ${v}`,
   } as Record<string, string>)[k] || `${k}: ${v}`
   return (
     <div className="filters">
       {show.includes('period') && <div className="tabs" role="tablist">{PERIODS.map(([v, l]) =>
         <button key={v} className={(f.period || '30d') === v ? 'on' : ''} onClick={() => set({ period: v })}>{l}</button>)}</div>}
+      {show.includes('data') && <select className="input sm" style={{ width: 150 }} value={f.data || ''} onChange={e => set({ data: e.target.value })} aria-label="Data">
+        <option value="">All data</option><option value="real">Real calls</option><option value="synthetic">Synthetic (Mohammed)</option>
+        <option value="demo">Demo (76 scripts)</option><option value="synthetic,demo">All synthetic</option></select>}
       {show.includes('resolution') && <select className="input sm" style={{ width: 150 }} value={f.resolution || ''} onChange={e => set({ resolution: e.target.value })} aria-label="Resolution">
         <option value="">Any outcome</option>{Object.entries(RESOLUTION).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</select>}
       {show.includes('reason') && <select className="input sm" style={{ width: 190 }} value={f.reason || ''} onChange={e => set({ reason: e.target.value })} aria-label="Reason">

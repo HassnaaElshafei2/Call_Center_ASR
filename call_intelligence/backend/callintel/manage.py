@@ -39,6 +39,11 @@ def main(argv=None):
     li = sub.add_parser("import-labelled")
     li.add_argument("folder", type=Path)
     li.add_argument("--enterprise", required=True, choices=["adib", "btech"])
+    imp = sub.add_parser("import-data", help="real calls, Mohammed's synthetic calls and the 76 demo recordings from Call_Center_Data")
+    imp.add_argument("repo", type=Path)
+    imp.add_argument("--keep-dates", action="store_true", help="keep the real calls' original recording dates")
+    imp.add_argument("--no-analysis", action="store_true")
+    imp.add_argument("--only", choices=["real", "synthetic", "demo-audio"], action="append")
     a = sub.add_parser("analyze-now")
     a.add_argument("--workers", type=int, default=4)
     u = sub.add_parser("create-user")
@@ -65,6 +70,27 @@ def main(argv=None):
         with session_scope() as db:
             ids = import_labelled(db, args.folder, args.enterprise)
         print(f"imported {len(ids)} calls; their analysis is queued")
+    elif args.cmd == "import-data":
+        from . import importers
+        root, an, only = args.repo, not args.no_analysis, set(args.only or ["real", "synthetic", "demo-audio"])
+        with session_scope() as db:
+            if "real" in only:
+                for ent in ("adib", "btech"):
+                    f = root / "callcenter_data" / "real" / ent
+                    if f.is_dir():
+                        print(f"real {ent}: {len(importers.import_real(db, f, ent, args.keep_dates, an))} calls")
+            if "synthetic" in only:
+                f = root / "callcenter_data" / "synthetic"
+                if (f / "elevenlabs").is_dir():
+                    print(f"synthetic ElevenLabs: {len(importers.import_elevenlabs(db, f / 'elevenlabs', an))} calls")
+                if (f / "older_tts").is_dir():
+                    print(f"synthetic older TTS: {len(importers.import_older_tts(db, f / 'older_tts', an))} calls")
+            if "demo-audio" in only:
+                f = root / "elevenlabs_hs_phone_v2" / "elevenlabs_hs_phone_v2"
+                scripts = root / "elevenlabs_hs" / "elevenlabs_hs" / "scripts"
+                if f.is_dir() and scripts.is_dir():
+                    print(f"demo calls with audio: {importers.attach_demo_audio(db, f, scripts)}")
+        print("done; analysis is queued for the new calls (run the worker, or: manage analyze-now)")
     elif args.cmd == "analyze-now":
         from .worker import run_one
         done = 0

@@ -53,7 +53,7 @@ export default function Calls({ review = false }: { review?: boolean }) {
                 <td>{c.status === 'done' ? <>
                   <span className="small strong">{catName(c.reason)}</span>
                   <div className="small muted clamp">{c.summary}</div>
-                  <div className="row" style={{ gap: 4, marginTop: 4 }}><RiskBadge value={c.churn_risk} /><ComplianceBadge on={c.compliance_issue} />
+                  <div className="row" style={{ gap: 4, marginTop: 4 }}>{c.source === 'synthetic' && <span className="pill cyan">Synthetic</span>}{c.source === 'seed' && <span className="pill plain">Demo</span>}{c.source === 'real' && <span className="pill brand">Real</span>}<RiskBadge value={c.churn_risk} /><ComplianceBadge on={c.compliance_issue} />
                     {c.repeat_of && <span className="pill info"><Repeat2 size={12} />Repeat call</span>}{c.needs_review && <span className="pill warn">Review</span>}</div>
                 </> : <span className={`pill ${c.status === 'failed' ? 'bad' : 'info'}`}>{c.status !== 'failed' && c.status !== 'waiting_asr' && <Loader2 size={12} className="spin" />}{STATUS[c.status] || c.status}</span>}</td>
                 <td><ResolutionBadge value={c.resolution} /></td><td><Stars value={c.satisfaction} /></td><td><MoodBadge value={c.mood_end} /></td>

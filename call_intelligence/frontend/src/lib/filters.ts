@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 
 // Call filters live in the URL, so every view can be shared and reloaded; the same keys as the API.
 export const FILTER_KEYS = ['period', 'date_from', 'date_to', 'agent', 'team', 'reason', 'resolution', 'sentiment', 'mood_end',
-  'sat_max', 'sat_min', 'churn', 'review', 'compliance', 'repeat', 'customer', 'status', 'q', 'risk'] as const
+  'sat_max', 'sat_min', 'churn', 'review', 'compliance', 'repeat', 'customer', 'status', 'q', 'risk', 'data'] as const
 export type Filters = Partial<Record<(typeof FILTER_KEYS)[number], string>>
 
 export function useFilters(defaults: Filters = { period: '30d' }) {

@@ -13,6 +13,8 @@ from ..deps import Ctx
 from ..models import Agent, Call, Customer, Turn
 
 PERIODS = {"today": 1, "7d": 7, "30d": 30, "90d": 90, "365d": 365}
+# which call sources make up each data set: real recordings, Mohammed's synthetic calls, the 76 scripted demo calls
+DATASETS = {"real": ["real", "upload", "api", "folder", "import"], "synthetic": ["synthetic"], "demo": ["seed"]}
 
 
 @dataclass
@@ -35,6 +37,7 @@ class CallFilters:
     customer: str | None = None
     status: str | None = None           # pipeline status; default: done only in analytics
     q: str | None = None                # words in summary or transcript
+    data: str | None = None             # real, synthetic, demo (comma-separated): which data set
 
     def to_dict(self) -> dict:
         return {f.name: getattr(self, f.name) for f in fields(self) if getattr(self, f.name) not in (None, "")}
@@ -46,9 +49,9 @@ def call_filters(period: str = "30d", date_from: str | None = None, date_to: str
                  sat_max: int | None = Query(None, ge=1, le=5), sat_min: int | None = Query(None, ge=1, le=5),
                  churn: str | None = None, review: bool | None = None, compliance: bool | None = None,
                  repeat: bool | None = None, customer: str | None = None, status: str | None = None,
-                 q: str | None = None) -> CallFilters:
+                 q: str | None = None, data: str | None = None) -> CallFilters:
     return CallFilters(period, date_from, date_to, agent, team, reason, resolution, sentiment, mood_end, sat_max,
-                       sat_min, churn, review, compliance, repeat, customer, status, q)
+                       sat_min, churn, review, compliance, repeat, customer, status, q, data)
 
 
 def _csv(v: str | None) -> list[str]:
@@ -88,6 +91,8 @@ def apply_filters(c: Ctx, q: SAQuery, f: CallFilters, done_only: bool = False, u
         q = q.filter(Call.agent_id.in_(c.db.query(Agent.id).filter(Agent.team_id.in_(_csv(f.team)))))
     if f.reason:
         q = q.filter(Call.reason_code.in_(_csv(f.reason)))
+    if f.data:
+        q = q.filter(Call.source.in_([s for d in _csv(f.data) for s in DATASETS.get(d, [])]))
     if f.resolution:
         q = q.filter(Call.resolution.in_(_csv(f.resolution)))
     if f.sentiment:
