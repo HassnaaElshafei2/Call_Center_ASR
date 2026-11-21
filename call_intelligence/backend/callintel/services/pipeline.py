@@ -24,7 +24,7 @@ def process_call(db: Session, call_id: str):
     if not call.turns:
         if not asr_client.configured():
             set_status(db, call, "waiting_asr", "No transcription service is connected yet. The call will be "
-                                                "transcribed when ASR_SERVICE_URL is set (Settings → Retry waiting calls).")
+                                                "transcribed once one is set (Administration → System → Retry).")
             return
         path = storage.resolve(call.audio_path)
         if not path:
@@ -38,6 +38,7 @@ def process_call(db: Session, call_id: str):
             call.turns.append(Turn(idx=i, speaker=roles.get(t["speaker"], "unknown"), start=float(t["start"]),
                                    end=float(t["end"]), text=t["text"].strip(), confidence=t.get("confidence")))
         call.duration_s = float(out.get("duration") or (raw[-1]["end"] if raw else 0))
+        call.asr_model = (out.get("model") or "")[:80]
         confs = [t["confidence"] for t in raw if t.get("confidence") is not None]
         call.transcript_quality = round(sum(confs) / len(confs), 3) if confs else None
         if not raw:

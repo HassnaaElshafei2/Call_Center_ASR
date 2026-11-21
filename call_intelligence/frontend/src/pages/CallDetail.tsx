@@ -103,7 +103,7 @@ export default function CallDetail() {
               {audioUrl && <audio ref={audio} src={audioUrl} preload="metadata" onTimeUpdate={e => setT(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />}
             </section>
 
-            <Widget icon={MessageSquareQuote} title="Transcript" sub={`${c.turns.length} turns · Egyptian Arabic${c.turns.some((x: any) => x.confidence != null) ? ' · our fine-tuned model' : ''}`}>
+            <Widget icon={MessageSquareQuote} title="Transcript" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
               {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript">
                 {c.turns.map((x: any) => {
                   const mood = x.mood && MOODS[x.mood]
@@ -263,4 +263,10 @@ function ReviewCard({ c, ent, cats, onDone }: any) {
     </div>
     <button className="btn primary" disabled={busy} onClick={save}><Check size={15} />{res === c.resolution && Number(satv) === c.satisfaction && reason === c.reason ? 'Approve the analysis' : 'Save corrections'}</button>
   </Widget>
+}
+
+function transcribedBy(model: string): string {
+  if (!model) return 'imported transcript'
+  if (model.startsWith('ElevenLabs')) return 'transcribed by ElevenLabs (stand-in)'
+  return 'transcribed by our fine-tuned model'
 }

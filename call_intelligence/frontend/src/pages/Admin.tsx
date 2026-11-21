@@ -42,7 +42,7 @@ function Status() {
       <dl className="kv"><dt>Status</dt><dd>{data.llm.configured ? <span className="pill good">connected</span> : <span className="pill bad">LLM_API_KEY missing</span>}</dd>
         <dt>Analysis and Ask</dt><dd>{data.llm.model}</dd><dt>Second opinion</dt><dd>{data.llm.second_opinion}</dd><dt>Search</dt><dd>{data.llm.embedding}</dd></dl>
     </Widget>
-    <Widget icon={Activity} title="Transcription service" sub="Mohammed's fine-tuned Cohere model + speaker separation">
+    <Widget icon={Activity} title="Transcription service" sub={data.asr.provider === 'elevenlabs' ? 'ElevenLabs Scribe, a stand-in until the DGX hosts our model (synthetic calls only)' : "Mohammed's fine-tuned Cohere model + speaker separation"}>
       <dl className="kv"><dt>Status</dt><dd>{data.asr.ok ? <span className="pill good">online</span> : <span className="pill warn">not connected</span>}</dd>
         {data.asr.model && <><dt>Model</dt><dd>{data.asr.model}</dd></>}{data.asr.device && <><dt>Device</dt><dd>{data.asr.device}</dd></>}
         {!data.asr.ok && <><dt>Why</dt><dd className="small">{data.asr.reason}</dd></>}</dl>

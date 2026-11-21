@@ -141,6 +141,7 @@ class Call(Base):
     status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
     status_detail: Mapped[str] = mapped_column(Text, default="")
     transcript_quality: Mapped[float | None] = mapped_column(Float, nullable=True)
+    asr_model: Mapped[str] = mapped_column(String(80), default="")      # what transcribed it; "" = imported transcript
 
     # analysis results copied here for filtering and charts (full output in CallAnalysis.data)
     summary: Mapped[str] = mapped_column(Text, default="")

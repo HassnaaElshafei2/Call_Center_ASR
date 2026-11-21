@@ -49,6 +49,8 @@ def call_detail(call_id: str, c: Ctx = Depends(ctx)):
                             "second_opinion": an.second_opinion} if an else None
     out["metrics"] = call.metrics
     out["has_audio"] = bool(storage.resolve(call.audio_path))
+    out["asr_model"] = call.asr_model or ""
+    out["transcript_quality"] = call.transcript_quality
     out["promises"] = [{"id": p.id, "text": p.text, "due": p.due_date.isoformat() if p.due_date else None,
                         "status": p.status, "turn": p.turn_idx} for p in c.db.query(Promise).filter_by(call_id=call.id)]
     from .actions import action_row

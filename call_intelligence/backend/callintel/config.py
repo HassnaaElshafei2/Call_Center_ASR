@@ -28,6 +28,13 @@ class Settings(BaseSettings):
 
     # transcription service (Mohammed's fine-tuned Cohere model + pyannote), see asr_service/
     asr_service_url: str = ""                  # "" = no service: uploads wait in "waiting for transcription"
+    # "service" = the service above (Mohammed's model); "elevenlabs" = ElevenLabs Scribe as a stand-in, for synthetic
+    # or consented recordings only (the audio leaves our infrastructure)
+    asr_provider: str = "service"
+    elevenlabs_api_key: str = ""
+    elevenlabs_stt_model: str = "scribe_v1"
+    elevenlabs_language: str = "ar"
+    elevenlabs_num_speakers: int = 0           # 0 = let Scribe decide (agent, customer and sometimes the IVR)
 
     # worker
     worker_poll_s: float = 2.0

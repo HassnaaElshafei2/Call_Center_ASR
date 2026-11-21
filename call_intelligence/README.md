@@ -53,6 +53,8 @@ Without `ASR_SERVICE_URL`, uploaded recordings are kept in a **waiting for trans
 - **On a GPU machine, with this compose file:** put Mohammed's model folder in `ASR_MODEL_DIR`, set `ASR_SERVICE_URL=http://asr:9000`, then run `docker compose --profile asr up -d --build`.
 - **On the DGX, once it hosts the model:** run `asr_service/` there (see its Dockerfile) and set `ASR_SERVICE_URL` to its address. Nothing else changes.
 
+**Until then, ElevenLabs as a stand-in:** set `ASR_PROVIDER=elevenlabs` and `ELEVENLABS_API_KEY` in `.env`, then restart the app and worker. Uploads are then transcribed by ElevenLabs Scribe, which also separates the speakers, and each call page says which engine transcribed it. Use this for synthetic or consented recordings only: the audio is sent to ElevenLabs. Switching back is `ASR_PROVIDER=service`.
+
 The service separates speakers in this order:
 
 1. stereo channels, when each party is on its own channel;
