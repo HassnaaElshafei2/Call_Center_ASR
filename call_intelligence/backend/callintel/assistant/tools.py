@@ -146,7 +146,8 @@ class Toolbox:
              "reason": self.cat_names.get(x.reason_code, x.reason_code), "resolution": x.resolution,
              "satisfaction": x.satisfaction, "mood_end": x.mood_end, "summary": x.summary}
         self.calls[x.id] = {"id": x.id, "summary": x.summary, "date": d["date"], "customer": d["customer"],
-                            "resolution": x.resolution, "satisfaction": x.satisfaction}
+                            "resolution": x.resolution, "satisfaction": x.satisfaction, "mood_end": x.mood_end,
+                            "reason": d["reason"], "enterprise": x.enterprise_id}
         return d
 
     def _link(self, f: CallFilters, label: str, n: int):

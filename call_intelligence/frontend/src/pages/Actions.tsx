@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, Check, CircleDollarSign, Copy, Handshake, ListTodo, Loader2, PartyPopper, Sparkles, Timer, Wand2 } from 'lucide-react'
+import { CalendarClock, Check, CircleDollarSign, Copy, Handshake, ListTodo, Loader2, PartyPopper, Sparkles, Timer, Wand2 } from '@/components/icons'
 import { api } from '@/lib/api'
 import { can, useAuth } from '@/lib/auth'
 import { when } from '@/lib/format'

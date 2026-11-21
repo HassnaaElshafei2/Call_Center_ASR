@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { ClipboardCheck, Download, Headphones, Loader2, Repeat2 } from 'lucide-react'
+import { ClipboardCheck, Download, Headphones, Loader2, Repeat2 } from '@/components/icons'
 import { api, download } from '@/lib/api'
 import { toQuery, useFilters } from '@/lib/filters'
 import { dur, title, when } from '@/lib/format'

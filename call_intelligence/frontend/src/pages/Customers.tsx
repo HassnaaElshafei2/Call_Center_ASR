@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Search, UserRound, Users } from 'lucide-react'
+import { AlertTriangle, Search, UserRound, Users } from '@/components/icons'
 import { api } from '@/lib/api'
 import { toQuery, useFilters } from '@/lib/filters'
 import { when } from '@/lib/format'

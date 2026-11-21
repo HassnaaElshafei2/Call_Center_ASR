@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { FileAudio, Upload } from 'lucide-react'
+import { FileAudio, Upload } from '@/components/icons'
 import { api } from '@/lib/api'
 import { Modal, useToast } from './ui'
 import { useEnt } from './Shell'

@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { BarChart3, Loader2 } from 'lucide-react'
+import { Loader2 } from '@/components/icons'
+import logo from '@/assets/brand/logo.svg'
+import logoWhite from '@/assets/brand/logo-white.svg'
+import { useTheme } from '@/lib/theme'
 import { api, token } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
@@ -9,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const theme = useTheme()
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setErr('')
     try {
@@ -20,16 +24,18 @@ export default function Login() {
   }
   return (
     <div className="login">
-      <form className="card login-card" onSubmit={submit}>
-        <div className="row" style={{ gap: 12 }}>
-          <span className="brand-mark" style={{ width: 44, height: 44, borderRadius: 14 }}><BarChart3 size={22} /></span>
-          <div><h2 style={{ fontSize: 22, fontWeight: 800 }}>Call Intelligence</h2><span className="muted small">by Sia · every customer call, understood</span></div>
+      <form className="login-card" onSubmit={submit}>
+        <div className="row" style={{ gap: 12, flexWrap: 'nowrap' }}>
+          <img src={theme === 'dark' ? logoWhite : logo} alt="Sia" style={{ height: 30 }} />
+          <span style={{ width: 1, height: 24, background: 'var(--border-strong)' }} />
+          <span style={{ font: '600 22px/28px var(--font)' }}>Listen</span>
         </div>
-        <p className="muted" style={{ margin: 0 }}>Transcription, analysis and follow-up for customer-service calls, in Egyptian Arabic.</p>
+        <div><h2 style={{ font: '600 28px/36px var(--font)', letterSpacing: '-.02em' }}>Sign in</h2>
+          <p className="muted" style={{ margin: '4px 0 0' }}>Every customer call, transcribed, understood and followed up, in Egyptian Arabic.</p></div>
         <label className="field">Email<input className="input" type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} required autoFocus /></label>
         <label className="field">Password<input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></label>
         {err && <div className="pill bad" style={{ height: 'auto', padding: '8px 12px' }}>{err}</div>}
-        <button className="btn primary" style={{ height: 42, justifyContent: 'center' }} disabled={busy}>{busy ? <Loader2 size={16} className="spin" /> : 'Sign in'}</button>
+        <button className="btn primary" disabled={busy}>{busy ? <Loader2 size={16} className="spin" /> : 'Sign in'}</button>
       </form>
     </div>
   )

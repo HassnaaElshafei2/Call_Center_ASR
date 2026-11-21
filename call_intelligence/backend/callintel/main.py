@@ -12,12 +12,12 @@ from sqlalchemy import text
 
 from .config import settings
 from .db import engine
-from .routers import actions, admin, analytics, assistant, auth, calls, people
+from .routers import actions, admin, analytics, assistant, auth, calls, home, people
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-app = FastAPI(title="Sia Call Intelligence", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title="Sia Listen", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
-for r in (auth.router, calls.router, analytics.router, people.router, actions.router, assistant.router,
+for r in (auth.router, home.router, calls.router, analytics.router, people.router, actions.router, assistant.router,
           admin.router, admin.brief_router):
     app.include_router(r)
 

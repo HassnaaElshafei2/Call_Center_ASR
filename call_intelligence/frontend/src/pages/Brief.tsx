@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Printer } from 'lucide-react'
+import { FileText, Printer } from '@/components/icons'
 import { api } from '@/lib/api'
 import { useFilters } from '@/lib/filters'
 import { pct, sat } from '@/lib/format'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Crown, Eye, Handshake, History, ListTodo, Phone, Plus, Smile, UserRound } from 'lucide-react'
+import { AlertTriangle, Crown, Eye, Handshake, History, ListTodo, Phone, Plus, Smile, UserRound } from '@/components/icons'
 import { api } from '@/lib/api'
 import { can, useAuth } from '@/lib/auth'
 import { dur, when } from '@/lib/format'
@@ -35,7 +35,7 @@ export default function CustomerDetail() {
             <Widget icon={History} title="Calls" sub={`${c.calls.length} call${c.calls.length === 1 ? '' : 's'} with this customer`}>
               <table className="table"><thead><tr><th>When</th><th>Agent</th><th style={{ width: '45%' }}>What happened</th><th>Outcome</th><th>Satisfaction</th><th>Length</th></tr></thead>
                 <tbody>{c.calls.map((x: any) => <tr key={x.id} className="click" onClick={() => nav(`${base}/calls/${x.id}`)}>
-                  <td className="small">{when(x.started_at)}</td><td className="small">{x.agent?.name || '–'}</td><td className="small clamp">{x.summary || x.status}</td>
+                  <td className="small">{when(x.started_at)}</td><td className="small">{x.agent?.name || '–'}</td><td className="small"><div className="clamp">{x.summary || x.status}</div></td>
                   <td><ResolutionBadge value={x.resolution} /></td><td><Stars value={x.satisfaction} /></td><td className="num small">{dur(x.duration_s)}</td></tr>)}</tbody></table>
             </Widget>
             {c.satisfaction_trend.length > 1 && <Widget icon={Smile} title="Satisfaction over time" sub="Predicted, per call">

@@ -1,11 +1,12 @@
 import { Fragment, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Activity, Award, ClipboardCheck, GraduationCap, Headphones, Loader2, Smile, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Activity, Award, ClipboardCheck, GraduationCap, Headphones, Loader2, Smile, Sparkles, CheckCircle2 } from '@/components/icons'
 import { api } from '@/lib/api'
 import { toQuery, useFilters } from '@/lib/filters'
 import { pct, sat, title, when } from '@/lib/format'
 import { Chart, axis } from '@/components/Chart'
+import { cssVar } from '@/lib/theme'
 import { FilterBar } from '@/components/FilterBar'
 import { ResolutionBadge, Stars } from '@/components/labels'
 import { Topbar, useEnt, useScreen } from '@/components/Shell'
@@ -41,7 +42,7 @@ export default function AgentDetail() {
             <Chart height={240} option={th => ({
               grid: { left: 36, right: 36, top: 16, bottom: 26 }, xAxis: { type: 'category', data: a.trend.map((w: any) => w.week.slice(5)), ...axis(th) },
               yAxis: [{ type: 'value', min: 0, max: 1, axisLabel: { formatter: (v: number) => `${v * 100}%`, color: th.muted }, splitLine: { lineStyle: { color: th.line } } }, { type: 'value', min: 1, max: 5, splitLine: { show: false }, axisLabel: { color: th.muted } }],
-              series: [{ name: 'Resolved', type: 'bar', data: a.trend.map((w: any) => w.resolved), barMaxWidth: 22, itemStyle: { color: '#12733a', borderRadius: [4, 4, 0, 0], opacity: 0.75 } },
+              series: [{ name: 'Resolved', type: 'bar', data: a.trend.map((w: any) => w.resolved), barMaxWidth: 22, itemStyle: { color: cssVar('--bar'), borderRadius: [2, 2, 0, 0] } },
                 { name: 'Satisfaction', type: 'line', yAxisIndex: 1, data: a.trend.map((w: any) => w.satisfaction), symbolSize: 8, lineStyle: { width: 3 }, itemStyle: { color: th.colors[3] } }] })} />
           </Widget>
           <Widget icon={GraduationCap} title="Coaching" sub="Written from this agent's numbers and failed scorecard moments"
@@ -61,7 +62,7 @@ export default function AgentDetail() {
           <Widget icon={ClipboardCheck} title="Scorecard items" sub="Pass rate, weakest first, against the team">
             {a.scorecard.map((s: any) => <div key={s.kpi} className="bar-row">
               <span><b>{kpiName(s.kpi)}</b></span><span className="num small"><b style={{ color: s.team_rate != null && s.rate < s.team_rate - 0.05 ? 'var(--bad)' : undefined }}>{pct(s.rate)}</b> <span className="faint">team {pct(s.team_rate)}</span></span>
-              <div className="bar" style={{ position: 'relative' }}><span style={{ width: `${s.rate * 100}%`, background: s.rate >= (s.team_rate ?? 0) ? 'var(--good)' : 'var(--gold)' }} />
+              <div className="bar" style={{ position: 'relative' }}><span style={{ width: `${s.rate * 100}%`, background: s.rate >= (s.team_rate ?? 0) ? 'var(--pos-accent)' : 'var(--warn-accent)' }} />
                 {s.team_rate != null && <i style={{ position: 'absolute', left: `${s.team_rate * 100}%`, top: -2, bottom: -2, width: 2, background: 'var(--ink)' }} />}</div>
             </div>)}
             {!a.scorecard.length && <span className="small muted">No scored calls.</span>}
@@ -74,7 +75,7 @@ export default function AgentDetail() {
         <Widget icon={Headphones} title="Recent calls">
           <table className="table"><thead><tr><th>When</th><th>Customer</th><th style={{ width: '45%' }}>What happened</th><th>Outcome</th><th>Satisfaction</th></tr></thead>
             <tbody>{a.calls.map((c: any) => <tr key={c.id} className="click" onClick={() => nav(`${base}/calls/${c.id}`)}><td className="small">{when(c.started_at)}</td><td>{c.customer?.name || '–'}</td>
-              <td className="small clamp">{c.summary}</td><td><ResolutionBadge value={c.resolution} /></td><td><Stars value={c.satisfaction} /></td></tr>)}</tbody></table>
+              <td className="small"><div className="clamp">{c.summary}</div></td><td><ResolutionBadge value={c.resolution} /></td><td><Stars value={c.satisfaction} /></td></tr>)}</tbody></table>
         </Widget>
       </div>
     </>

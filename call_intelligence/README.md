@@ -1,4 +1,4 @@
-# Sia Call Intelligence
+# Sia Listen
 
 Customer-service call analysis for **ADIB Egypt** and **B.TECH** (switch between them, or see both side by side).
 Recordings are transcribed by Mohammed's fine-tuned Cohere model. Each call is then analysed by the models on the DGX gateway, giving:
@@ -12,7 +12,8 @@ Recordings are transcribed by Mohammed's fine-tuned Cohere model. Each call is t
 
 | Page | What it is for |
 |---|---|
-| Overview | KPIs against the previous period, trend, outcomes, mood journey, reasons, agents, call heat map, enterprises side by side. Every chart opens the calls behind it |
+| Home | The landing page: what changed since yesterday (repeat callers, unhappy endings, promises due, what went well), what needs you today, and a big Ask Sia box |
+| Overview | Sia AI's read (attention and positive insight cards, each with one action), KPIs against the previous period, trend, outcomes, mood journey, reasons, agents, call heat map, enterprises side by side. Every chart opens the calls behind it |
 | Calls | Every call, with filters (period, outcome, reason, agent, satisfaction, mood, words said), CSV export and upload |
 | Call detail | Player with speaker lanes, transcript (click to seek, correct a line), evidence for each label, QA, measured behaviour, review |
 | Review queue | Calls the analysis is unsure about (second opinion disagrees, compliance, low transcript confidence) |
@@ -20,10 +21,20 @@ Recordings are transcribed by Mohammed's fine-tuned Cohere model. Each call is t
 | Agents | Resolution, satisfaction, QA by item compared with the team, talk share, AI coaching notes |
 | Action Center | Suggested → to do → in progress → done; message drafts in Egyptian Arabic; promises due |
 | Weekly brief | One page for management, written from the period's numbers |
-| Ask | Chat assistant (also a pop-up on every page): answers from your data with links to the calls, can propose actions |
+| Ask Sia | Assistant on every page (Ctrl/⌘ K) and as a page. Three suggestions picked from your data, each with its reason; an EN / ع switch that turns the whole panel and the answers into Egyptian Arabic; answers link to every call and can propose follow-ups for you to confirm |
 | Administration | Users and roles per enterprise, call reasons, QA scorecard, agents, recording-name rules, audit log, system status |
 
 Roles are set per enterprise: admin, manager, QA, retention, agent (sees only their own calls) and executive (read only).
+
+## Design
+
+The interface follows the **Sia UI Guidelines v1.2**:
+- **Colour:** Indigo 600 as the brand colour, the neutral greys, and the status colour sets.
+- **Type:** Inter for UI text, and Poppins only for the words "Sia" and "Sia AI".
+- **Layout:** the 280 px sidebar with the company switcher in its footer, grey containers holding white cards, and the chart palette and rules.
+- **Icons and logo:** Remix icons, and the official logo, kept as artwork.
+
+Light and dark themes come from the guideline tokens in `frontend/src/styles/app.css`. The logo files are in `frontend/src/assets/brand/`; replace them with the design team's master files when available.
 
 ## Run it with Docker
 

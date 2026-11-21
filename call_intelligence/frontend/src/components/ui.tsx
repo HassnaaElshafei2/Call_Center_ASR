@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownRight, ArrowUpRight, Maximize2, X } from 'lucide-react'
+import { Maximize2, X } from '@/components/icons'
 
 export function Widget({ icon: I, title, sub, actions, children, className = '', onExpand, style }: {
   icon?: any; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode; className?: string
@@ -42,22 +42,24 @@ export function Modal({ open, onClose, icon: I, title, sub, children, narrow, ac
     </div>, document.body)
 }
 
-export function Kpi({ icon: I, label, value, foot, bar, tint = 'var(--brand-soft)', ink = 'var(--brand-text)', change, goodWhenUp = true, onClick }: {
-  icon: any; label: string; value: ReactNode; foot?: ReactNode; bar?: number | null; tint?: string; ink?: string
-  change?: { value: number | null; label: string }; goodWhenUp?: boolean; onClick?: () => void
+/** KPI card (guidelines): label with icon, value with a change chip, optional mini bars (last periods; the newest in indigo). */
+export function Kpi({ icon: I, label, value, suffix, foot, bar, change, goodWhenUp = true, mini, onClick }: {
+  icon: any; label: string; value: ReactNode; suffix?: ReactNode; foot?: ReactNode; bar?: number | null
+  tint?: string; ink?: string; change?: { value: number | null; label: string }; goodWhenUp?: boolean; mini?: number[]; onClick?: () => void
 }) {
   const c = change?.value
-  const good = c == null ? null : (c > 0) === goodWhenUp
+  const tone = c == null ? null : Math.abs(c) < 1e-9 ? 'flat' : (c > 0) === goodWhenUp ? 'up' : 'down'
+  const max = Math.max(1e-9, ...(mini ?? [0]))
   return (
-    <div className={`card kpi ${onClick ? 'clickable' : ''}`} style={{ ['--tint' as any]: tint, ['--tint-ink' as any]: ink }} onClick={onClick}>
-      <div className="k-head"><span className="k-icon"><I size={15} /></span>{label}</div>
-      <div className="k-value num">{value}</div>
-      {bar != null && <div className="k-bar"><span style={{ width: `${Math.max(2, Math.min(100, bar * 100))}%` }} /></div>}
-      <div className="k-foot">
-        {c != null && Math.abs(c) > 1e-9 && <span className={good ? 'up' : 'down'} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 600 }}>
-          {c > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}{change!.label}</span>}
-        <span>{foot}</span>
-      </div>
+    <div className={`card kpi ${onClick ? 'clickable' : ''}`} onClick={onClick}>
+      <div className="k-head"><I size={16} />{label}</div>
+      <div className="k-value">{value}{suffix && <small>{suffix}</small>}
+        {tone && <span className={`chg ${tone}`}>{tone === 'flat' ? 'Stable' : change!.label}</span>}</div>
+      {mini && mini.length > 1 && <svg className="k-mini" width={mini.length * 12} height="32" aria-hidden>
+        {mini.map((v, i) => { const h = Math.max(2, (v / max) * 30); return <rect key={i} x={i * 12} y={32 - h} width="8" height={h} rx="2"
+          fill={i >= mini.length - 1 ? 'var(--bar-hi)' : 'var(--bar)'} /> })}</svg>}
+      {bar != null && !mini && <div className="bar" style={{ height: 4, marginTop: 4 }}><span style={{ width: `${Math.max(2, Math.min(100, bar * 100))}%`, background: bar > .85 ? 'var(--pos-accent)' : 'var(--neutral-accent)' }} /></div>}
+      {foot && <div className="k-foot">{foot}</div>}
     </div>
   )
 }
@@ -81,7 +83,7 @@ export function BarList({ rows, onClick, total }: {
         <span className="clamp1" style={{ fontWeight: 500 }}>{r.label}</span>
         <span className="num small" style={{ fontWeight: 600 }}>{r.right ?? r.value}</span>
         <div className="bar">
-          {(r.parts ?? [{ v: r.value, color: 'var(--brand)' }]).map((p, i) =>
+          {(r.parts ?? [{ v: r.value, color: 'var(--chart-1)' }]).map((p, i) =>
             <span key={i} title={p.title} style={{ width: `${(100 * p.v) / max}%`, background: p.color }} />)}
         </div>
       </div>

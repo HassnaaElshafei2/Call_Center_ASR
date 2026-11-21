@@ -59,3 +59,14 @@ def test_overview(client):
     h = login(client, "manager@demo.sia")
     o = client.get("/api/e/all/overview?period=all", headers=h)
     assert o.status_code == 200, o.text
+
+
+def test_home_and_suggestions(client):
+    h = login(client, "manager@demo.sia")
+    home = client.get("/api/e/all/home", headers=h).json()
+    assert {"window", "new_calls", "events", "needs", "attention"} <= set(home)
+    for lang in ("en", "ar"):
+        s = client.get(f"/api/e/all/assistant/suggestions?lang={lang}", headers=h).json()
+        assert 1 <= len(s["suggested"]) <= 3 and all(x["q"] and x["why"] for x in s["suggested"])
+        assert set(s["topics"]) == {"calls", "customers", "agents", "reports"}
+    assert client.get("/api/e/all/assistant/suggestions?lang=fr", headers=h).status_code == 422

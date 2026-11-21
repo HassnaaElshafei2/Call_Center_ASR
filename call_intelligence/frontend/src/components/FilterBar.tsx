@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { X } from '@/components/icons'
 import { PERIODS, type Filters } from '@/lib/filters'
 import { RESOLUTION, MOODS } from './labels'
 import { useEnt } from './Shell'
@@ -24,15 +24,15 @@ export function FilterBar({ f, set, clear, extra, show = ['period', 'resolution'
     <div className="filters">
       {show.includes('period') && <div className="tabs" role="tablist">{PERIODS.map(([v, l]) =>
         <button key={v} className={(f.period || '30d') === v ? 'on' : ''} onClick={() => set({ period: v })}>{l}</button>)}</div>}
-      {show.includes('resolution') && <select className="input" style={{ width: 160 }} value={f.resolution || ''} onChange={e => set({ resolution: e.target.value })} aria-label="Resolution">
+      {show.includes('resolution') && <select className="input sm" style={{ width: 150 }} value={f.resolution || ''} onChange={e => set({ resolution: e.target.value })} aria-label="Resolution">
         <option value="">Any outcome</option>{Object.entries(RESOLUTION).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</select>}
-      {show.includes('reason') && <select className="input" style={{ width: 210 }} value={f.reason || ''} onChange={e => set({ reason: e.target.value })} aria-label="Reason">
+      {show.includes('reason') && <select className="input sm" style={{ width: 190 }} value={f.reason || ''} onChange={e => set({ reason: e.target.value })} aria-label="Reason">
         <option value="">Any reason</option>{cats.map((c: any) => <option key={c.enterprise + c.code} value={c.code}>{ent === 'all' ? `${c.enterprise.toUpperCase()} · ` : ''}{c.name}</option>)}</select>}
-      {show.includes('agent') && <select className="input" style={{ width: 170 }} value={f.agent || ''} onChange={e => set({ agent: e.target.value })} aria-label="Agent">
+      {show.includes('agent') && <select className="input sm" style={{ width: 150 }} value={f.agent || ''} onChange={e => set({ agent: e.target.value })} aria-label="Agent">
         <option value="">Any agent</option>{agents.map((a: any) => <option key={a.id} value={a.id}>{a.name}{ent === 'all' ? ` (${a.enterprise.toUpperCase()})` : ''}</option>)}</select>}
-      {show.includes('sat') && <select className="input" style={{ width: 160 }} value={f.sat_max || ''} onChange={e => set({ sat_max: e.target.value })} aria-label="Satisfaction">
+      {show.includes('sat') && <select className="input sm" style={{ width: 150 }} value={f.sat_max || ''} onChange={e => set({ sat_max: e.target.value })} aria-label="Satisfaction">
         <option value="">Any satisfaction</option><option value="2">Unhappy (1–2)</option><option value="3">3 or less</option></select>}
-      {show.includes('mood') && <select className="input" style={{ width: 160 }} value={f.mood_end || ''} onChange={e => set({ mood_end: e.target.value })} aria-label="Mood at the end">
+      {show.includes('mood') && <select className="input sm" style={{ width: 150 }} value={f.mood_end || ''} onChange={e => set({ mood_end: e.target.value })} aria-label="Mood at the end">
         <option value="">Any mood at the end</option>{Object.entries(MOODS).map(([k, m]) => <option key={k} value={k}>Ended {m.label.toLowerCase()}</option>)}
         <option value="angry,frustrated">Ended angry or frustrated</option></select>}
       {extra}

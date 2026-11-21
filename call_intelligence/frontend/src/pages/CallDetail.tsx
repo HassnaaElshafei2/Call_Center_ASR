@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ArrowRight, BadgeCheck, Check, CheckCircle2, ClipboardCheck, Edit3, Eye, FileAudio, Flag, Gauge, Handshake,
-  Lightbulb, ListTodo, Loader2, MessageSquareQuote, Pause, Play, Repeat2, RotateCw, ShieldAlert, Smile, Sparkles, Target, UserRound, X } from 'lucide-react'
+  Lightbulb, ListTodo, Loader2, MessageSquareQuote, Pause, Play, Repeat2, RotateCw, ShieldAlert, Smile, Sparkles, Target, UserRound, X } from '@/components/icons'
 import { api } from '@/lib/api'
 import { can, useAuth } from '@/lib/auth'
 import { dur, pct, title, when } from '@/lib/format'
@@ -12,8 +12,8 @@ import { Empty, Modal, Skeleton, useToast, Widget } from '@/components/ui'
 import { ActionEditor } from './Actions'
 
 const MOMENT_COLOR: Record<string, string> = {
-  problem_stated: 'var(--c5)', frustration: 'var(--bad)', escalation_request: 'var(--bad)', complaint: 'var(--bad)', hold: 'var(--c7)',
-  solution_offered: 'var(--c1)', resolution: 'var(--good)', promise: 'var(--gold)', gratitude: 'var(--good)', upsell: 'var(--c6)',
+  problem_stated: 'var(--c5)', frustration: 'var(--bad)', escalation_request: 'var(--bad)', complaint: 'var(--bad)', hold: 'var(--ivr)',
+  solution_offered: 'var(--agent)', resolution: 'var(--good)', promise: 'var(--gold)', gratitude: 'var(--good)', upsell: 'var(--c6)',
   compliance_issue: 'var(--bad)', confusion: 'var(--c4)',
 }
 
@@ -89,7 +89,7 @@ export default function CallDetail() {
               <div className="row">
                 <button className="btn icon primary" disabled={!audioUrl} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
                 <span className="num small">{dur(t)} / {dur(durS)}</span>
-                <span className="legend right"><span><span className="dot" style={{ background: 'var(--c1)' }} />Agent</span><span><span className="dot" style={{ background: 'var(--c3)' }} />Customer</span>
+                <span className="legend right"><span><span className="dot" style={{ background: 'var(--agent)' }} />Agent</span><span><span className="dot" style={{ background: 'var(--customer)' }} />Customer</span>
                   {!audioUrl && <span className="faint">No recording: transcript only</span>}</span>
               </div>
               <div className="lanes" onClick={e => { const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect(); const s = ((e.clientX - r.left) / r.width) * durS
@@ -212,7 +212,7 @@ function Behaviour({ m }: { m: any }) {
   const share = m.agent_talk_share
   return <div className="stack small">
     <div><div className="row"><span>Agent talk share</span><b className="right num">{pct(share)}</b></div>
-      <div className="bar" style={{ marginTop: 4 }}><span style={{ width: `${(share || 0) * 100}%`, background: 'var(--c1)' }} /><span style={{ width: `${(1 - (share || 0)) * 100}%`, background: 'var(--c3)' }} /></div>
+      <div className="bar" style={{ marginTop: 4 }}><span style={{ width: `${(share || 0) * 100}%`, background: 'var(--agent)' }} /><span style={{ width: `${(1 - (share || 0)) * 100}%`, background: 'var(--customer)' }} /></div>
       <span className="tiny faint">{share > 0.65 ? 'The agent did most of the talking.' : share < 0.35 ? 'The customer did most of the talking.' : 'Balanced conversation.'}</span></div>
     <dl className="kv"><dt>Longest silence</dt><dd className="num">{m.longest_silence_s}s</dd><dt>Silences over 5 s</dt><dd className="num">{m.silences_over_5s}</dd>
       <dt>Talking over each other</dt><dd className="num">{m.overlaps}</dd><dt>Turns</dt><dd className="num">{m.turns}</dd>{!m.timed && <><dt /><dd className="tiny faint">Estimated from words (no audio timings)</dd></>}</dl>

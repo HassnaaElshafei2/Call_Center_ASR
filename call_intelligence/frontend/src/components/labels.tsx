@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, Frown, Meh, Smile, Star, XCircle, Angry, HelpCircle, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, CircleDashed, Frown, Meh, Smile, Star, XCircle, Angry, HelpCircle, ShieldAlert } from '@/components/icons'
 
 // Every status shows an icon/shape as well as a colour.
 export const RESOLUTION: Record<string, { label: string; tone: string; icon: any; color: string }> = {
@@ -32,7 +32,7 @@ export function MoodBadge({ value }: { value?: string }) {
 
 export function Stars({ value }: { value?: number | null }) {
   if (value == null) return <span className="faint">–</span>
-  const tone = value <= 2 ? 'var(--bad)' : value === 3 ? 'var(--gold)' : 'var(--good)'
+  const tone = value <= 2 ? 'var(--neg-accent)' : value === 3 ? 'var(--warn-accent)' : 'var(--pos-accent)'
   return <span className="stars" title={`Predicted satisfaction ${value} of 5`} aria-label={`${value} of 5`}>
     {[1, 2, 3, 4, 5].map(i => <Star key={i} fill={i <= value ? tone : 'none'} stroke={i <= value ? tone : 'var(--line-strong)'} />)}
   </span>

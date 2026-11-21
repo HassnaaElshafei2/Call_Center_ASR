@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Users } from 'lucide-react'
+import { Users } from '@/components/icons'
 import { api } from '@/lib/api'
 import { toQuery, useFilters } from '@/lib/filters'
 import { pct, sat } from '@/lib/format'

@@ -10,7 +10,8 @@ from sqlalchemy.orm import joinedload
 
 from ..deps import Ctx, ctx
 from ..models import Action, Agent, Call, Category, Enterprise, Promise
-from .common import CallFilters, apply_filters, call_filters, scope, window
+from ..services import insights as facts
+from .common import PERIODS, CallFilters, apply_filters, call_filters, scope, window
 
 router = APIRouter(prefix="/api/e/{ent}")
 CAIRO = ZoneInfo("Africa/Cairo")
@@ -111,6 +112,7 @@ def overview(c: Ctx = Depends(ctx), f: CallFilters = Depends(call_filters)):
         "heatmap": heat, "agents": agents, "enterprises": by_ent,
         "work": {"open_actions": open_actions, "promises_due": promises_due, "recovered": recovered},
         "insights": insights(calls, prev, reasons, agents, open_actions, promises_due),
+        "read": facts.read(c, PERIODS.get(f.period, 365)),
     }
 
 

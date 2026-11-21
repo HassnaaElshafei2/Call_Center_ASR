@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, ClipboardCheck, Lock, Cpu, FileCog, History, Plus, RotateCw, Save, Tags, Trash2, UserCog, Users } from 'lucide-react'
+import { Activity, ClipboardCheck, Lock, Cpu, FileCog, History, Plus, RotateCw, Save, Tags, Trash2, UserCog, Users } from '@/components/icons'
 import { api } from '@/lib/api'
 import { can, useAuth } from '@/lib/auth'
 import { when } from '@/lib/format'
