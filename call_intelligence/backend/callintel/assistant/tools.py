@@ -258,6 +258,7 @@ class Toolbox:
         if calls and not any(p.get("auto") == "unhappy" for p in self.proposals):
             self.proposals.append({"call_ids": [x.id for x in calls], "type": "callback", "priority": "high", "auto": "unhappy",
                                    "title": f"Call back {len(calls)} unhappy customer{'s' if len(calls) > 1 else ''}",
+                                   "item_title": "Call back an unhappy customer",          # the title each action gets
                                    "reason": "They ended their latest call angry, frustrated or very unsatisfied, and nobody has followed up."})
         return {"total": len(calls), "period_days": days, "callback_proposal": "attached for all of them",
                 "customers": [self._brief(x) for x in calls[: min(int(limit or 50), 50)]]}

@@ -23,6 +23,25 @@ export default function Actions() {
   const promises = useQuery({ queryKey: ['promises', ent], queryFn: () => api(`/e/${ent}/promises?status=open`), enabled: tab === 'promises' })
   useScreen({ page: 'action center', title: 'Action Center', tab })
   const s = data?.summary
+  const { me } = useAuth()
+  const toast = useToast()
+  const [drag, setDrag] = useState<string | null>(null)        // id of the card being dragged
+  const [over, setOver] = useState<string | null>(null)        // column under the pointer
+  const key = ['actions', ent, type, mine]
+  const canMove = (a: any) => can(me, 'act', a.enterprise)
+  const move = async (id: string, status: string) => {
+    const a = (data?.actions || []).find((x: any) => x.id === id)
+    if (!a || a.status === status) return
+    qc.setQueryData(key, (old: any) => old && { ...old, actions: old.actions.map((x: any) => x.id === id ? { ...x, status } : x) })
+    try {
+      await api(`/e/${a.enterprise}/actions/${id}`, { method: 'PATCH', json: { status } })
+      toast(`Moved to ${COLS.find(c => c[0] === status)?.[1]}`)
+    } catch (e: any) {
+      toast(`Couldn't move it: ${e.message}`)
+    } finally {
+      qc.invalidateQueries({ queryKey: ['actions', ent] }); qc.invalidateQueries({ queryKey: ['open-actions', ent] }); qc.invalidateQueries({ queryKey: ['home', ent] })
+    }
+  }
   const setPromise = async (id: number, status: string) => { await api(`/e/${ent}/promises/${id}`, { method: 'PATCH', json: { status } }); qc.invalidateQueries({ queryKey: ['promises', ent] }) }
   return (
     <>
@@ -45,9 +64,15 @@ export default function Actions() {
         {isLoading ? <Skeleton h={400} /> : tab === 'board' ? (
           <div className="kanban">{COLS.map(([st, label]) => {
             const items = (data?.actions || []).filter((a: any) => a.status === st).slice(0, st === 'done' ? 20 : 60)
-            return <div key={st} className="col"><h4>{label}<span className="pill plain">{(data?.actions || []).filter((a: any) => a.status === st).length}</span></h4>
-              {items.map((a: any) => <TaskCard key={a.id} a={a} ent={ent} onOpen={() => setOpen(a.id)} />)}
-              {!items.length && <span className="small faint">Nothing here.</span>}</div>
+            return <div key={st} className={`col ${over === st && drag ? 'drop' : ''}`}
+              onDragOver={e => { if (drag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (over !== st) setOver(st) } }}
+              onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null) }}
+              onDrop={e => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; setOver(null); setDrag(null); if (id) move(id, st) }}>
+              <h4>{label}<span className="pill plain">{(data?.actions || []).filter((a: any) => a.status === st).length}</span></h4>
+              {items.map((a: any) => <TaskCard key={a.id} a={a} ent={ent} onOpen={() => setOpen(a.id)} draggable={canMove(a)} dragging={drag === a.id}
+                onDragStart={e => { e.dataTransfer.setData('text/plain', a.id); e.dataTransfer.effectAllowed = 'move'; setDrag(a.id) }}
+                onDragEnd={() => { setDrag(null); setOver(null) }} />)}
+              {!items.length && <span className="small faint">{drag ? 'Drop here' : 'Nothing here.'}</span>}</div>
           })}</div>
         ) : tab === 'promises' ? (
           <Widget icon={Handshake} title="Promises made to customers" sub="Commitments found in calls: keep them, or call before they're broken">
@@ -75,8 +100,12 @@ export default function Actions() {
   )
 }
 
-function TaskCard({ a, ent, onOpen }: { a: any; ent: string; onOpen: () => void }) {
-  return <div className="card task" onClick={onOpen}>
+function TaskCard({ a, ent, onOpen, draggable, dragging, onDragStart, onDragEnd }: {
+  a: any; ent: string; onOpen: () => void; draggable?: boolean; dragging?: boolean
+  onDragStart?: (e: React.DragEvent) => void; onDragEnd?: () => void
+}) {
+  return <div className={`card task ${draggable ? 'draggable' : ''} ${dragging ? 'dragging' : ''}`} onClick={onOpen}
+    draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd} title={draggable ? 'Drag to another column to change its status' : undefined}>
     <div className="row" style={{ gap: 6 }}><span className={`pill ${PRIORITY_TONE[a.priority]}`}>{a.priority}</span><span className="pill brand">{ACTION_LABEL[a.type] || a.type}</span>
       {ent === 'all' && <span className="pill plain">{a.enterprise.toUpperCase()}</span>}{a.overdue && <span className="pill bad right">overdue</span>}</div>
     <b className="small">{a.title}</b>

@@ -140,7 +140,7 @@ export function AskPanel({ page = false, onClose, initial }: { page?: boolean; o
   const markProposal = (p: any, state: 'done' | 'dismissed') =>
     setTurns(ts => ts.map(x => x.answer ? { ...x, answer: { ...x.answer, proposals: x.answer.proposals.map((y: any) => y === p ? { ...y, [state]: true } : y) } } : x))
   const confirm = async (p: any) => {
-    await api(`/e/${ent}/actions`, { method: 'POST', json: { call_ids: p.call_ids, type: p.type, title: p.title, reason: p.reason || '', priority: p.priority || 'medium' } })
+    await api(`/e/${ent}/actions`, { method: 'POST', json: { call_ids: p.call_ids, type: p.type, title: p.item_title || p.title, reason: p.reason || '', priority: p.priority || 'medium' } })
     toast(`${p.call_ids.length} action${p.call_ids.length === 1 ? '' : 's'} created`)
     qc.invalidateQueries({ queryKey: ['actions'] })
     markProposal(p, 'done')
