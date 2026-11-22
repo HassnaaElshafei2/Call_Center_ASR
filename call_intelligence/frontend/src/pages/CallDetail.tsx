@@ -83,7 +83,7 @@ export default function CallDetail() {
           <div><b>{({ queued: 'Queued', waiting_asr: 'Waiting for the transcription service', transcribing: 'Transcribing', analyzing: 'Analysing', failed: 'Processing failed' } as any)[c.status]}</b>
             <div className="small muted">{c.status_detail}</div></div></div>}
 
-        <div className="split">
+        <div className={`split ${a ? 'fit' : ''}`}>
           <div className="stack call-left" style={{ gap: 18 }}>
             <section className="card player">
               <div className="row">
@@ -103,7 +103,7 @@ export default function CallDetail() {
               {audioUrl && <audio ref={audio} src={audioUrl} preload="metadata" onTimeUpdate={e => setT(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />}
             </section>
 
-            <Widget icon={MessageSquareQuote} title="Transcript" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
+            <Widget icon={MessageSquareQuote} title="Transcript" className="transcript-card" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
               {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript-box"><div className="transcript">
                 {c.turns.map((x: any) => {
                   const mood = x.mood && MOODS[x.mood]
@@ -124,28 +124,11 @@ export default function CallDetail() {
                 })}
               </div></div>}
             </Widget>
-            {a && <div className="grid g2" style={{ alignItems: 'stretch' }}>
-              <Widget icon={Target} title="Key moments" sub="Turning points; click to jump">
-                {a.moments.map((m: any, i: number) => <button key={i} className="insight" style={{ border: 0, background: 'none', textAlign: 'left', gridTemplateColumns: '12px 1fr auto' }} onClick={() => jump(m.turn)}>
-                  <span className="dot" style={{ marginTop: 6, background: MOMENT_COLOR[m.type] }} /><p><b>{title(m.type)}</b> · <span className="muted">{m.note}</span></p><span className="tiny faint num">{dur(c.turns.find((x: any) => x.idx === m.turn)?.start)}</span></button>)}
-              </Widget>
-              <Widget icon={ClipboardCheck} title="QA scorecard" sub={c.qa_score != null ? `Score ${c.qa_score} of 100` : 'Not scored'}>
-                {a.scorecard.map((s: any) => <div key={s.kpi} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap', cursor: s.turn != null ? 'pointer' : 'default' }} onClick={() => s.turn != null && jump(s.turn)}>
-                  <span className={`pill ${s.result === 'pass' ? 'good' : s.result === 'fail' ? 'bad' : 'plain'}`} style={{ width: 54, justifyContent: 'center' }}>{s.result === 'pass' ? <Check size={12} /> : s.result === 'fail' ? <X size={12} /> : null}{s.result}</span>
-                  <span><b>{kpiName(s.kpi)}</b><span className="muted" style={{ display: 'block' }}>{s.note}</span></span></div>)}
-              </Widget>
-            </div>}
-            {a && <div className="grid g2" style={{ alignItems: 'start' }}>
-              <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model">
+            {a && <div className="grid g2" style={{ alignItems: 'stretch', flex: 'none' }}>
+              <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model" style={canReview ? undefined : { gridColumn: '1 / -1' }}>
                 <Behaviour m={c.metrics} />
               </Widget>
-              {(a.promises.length > 0 || a.opportunities.length > 0 || a.knowledge_gaps.length > 0 || a.risks.compliance_issues.length > 0) && <Widget icon={Lightbulb} title="Also found">
-                {a.risks.compliance_issues.map((x: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><ShieldAlert size={14} className="down" />{x}</div>)}
-                {c.promises.map((p: any) => <div key={p.id} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => p.turn != null && jump(p.turn)}><Handshake size={14} style={{ color: 'var(--gold-text)' }} />
-                  <span>Promise: {p.text}{p.due && <span className="muted"> · due {p.due}</span>}</span></div>)}
-                {a.opportunities.map((o: any, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => jump(o.turn)}><BadgeCheck size={14} className="up" /><span>{title(o.type)}: {o.note}</span></div>)}
-                {a.knowledge_gaps.map((g: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><Lightbulb size={14} style={{ color: 'var(--info)' }} /><span>Knowledge gap: {g}</span></div>)}
-              </Widget>}
+              {canReview && <ReviewCard c={c} ent={ent} cats={(meta?.categories || []).filter((x: any) => x.enterprise === c.enterprise)} onDone={refresh} />}
             </div>}
           </div>
 
@@ -170,19 +153,37 @@ export default function CallDetail() {
                   <div className="tiny faint" style={{ marginTop: 6 }}>Predicted from the conversation, not a survey.</div></div>
               </div>
               <CustomerCard c={c} ent={ent} base={base} canAct={canAct} onChange={refresh} />
-              {canReview && <ReviewCard c={c} ent={ent} cats={(meta?.categories || []).filter((x: any) => x.enterprise === c.enterprise)} onDone={refresh} />}
-              <Widget icon={ListTodo} title="Recommended actions" sub="Suggested by the analysis; a person decides">
-                {!c.actions.length && <span className="small muted">Nothing to follow up.</span>}
-                {c.actions.map((x: any) => <div key={x.id} className="card" style={{ padding: 12, boxShadow: 'none', cursor: 'pointer' }} onClick={() => setActionOpen(x.id)}>
-                  <div className="row"><span className={`pill ${PRIORITY_TONE[x.priority]}`}>{x.priority}</span><span className="pill brand">{ACTION_LABEL[x.type] || x.type}</span>
-                    <span className="pill plain right">{x.status.replace('_', ' ')}</span></div>
-                  <b style={{ display: 'block', marginTop: 6 }}>{x.title}</b><span className="small muted">{x.reason}</span>
-                  {x.draft_message && <div className="bubble-ar small" style={{ marginTop: 6, padding: 8, borderRadius: 10, background: 'var(--panel-2)' }}>{x.draft_message}</div>}
-                </div>)}
-              </Widget>
+              {(a.promises.length > 0 || a.opportunities.length > 0 || a.knowledge_gaps.length > 0 || a.risks.compliance_issues.length > 0) && <Widget icon={Lightbulb} title="Also found">
+                {a.risks.compliance_issues.map((x: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><ShieldAlert size={14} className="down" />{x}</div>)}
+                {c.promises.map((p: any) => <div key={p.id} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => p.turn != null && jump(p.turn)}><Handshake size={14} style={{ color: 'var(--gold-text)' }} />
+                  <span>Promise: {p.text}{p.due && <span className="muted"> · due {p.due}</span>}</span></div>)}
+                {a.opportunities.map((o: any, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => jump(o.turn)}><BadgeCheck size={14} className="up" /><span>{title(o.type)}: {o.note}</span></div>)}
+                {a.knowledge_gaps.map((g: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><Lightbulb size={14} style={{ color: 'var(--info)' }} /><span>Knowledge gap: {g}</span></div>)}
+              </Widget>}
             </> : <Widget icon={Sparkles} title="Analysis"><span className="muted small">The analysis appears here when the call is processed.</span></Widget>}
           </div>
         </div>
+
+        {a && <div className="grid g3" style={{ alignItems: 'stretch' }}>
+          <Widget icon={Target} title="Key moments" sub="Turning points; click to jump">
+            {a.moments.map((m: any, i: number) => <button key={i} className="insight" style={{ border: 0, background: 'none', textAlign: 'left', gridTemplateColumns: '12px 1fr auto' }} onClick={() => jump(m.turn)}>
+              <span className="dot" style={{ marginTop: 6, background: MOMENT_COLOR[m.type] }} /><p><b>{title(m.type)}</b> · <span className="muted">{m.note}</span></p><span className="tiny faint num">{dur(c.turns.find((x: any) => x.idx === m.turn)?.start)}</span></button>)}
+          </Widget>
+          <Widget icon={ClipboardCheck} title="QA scorecard" sub={c.qa_score != null ? `Score ${c.qa_score} of 100` : 'Not scored'}>
+            {a.scorecard.map((s: any) => <div key={s.kpi} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap', cursor: s.turn != null ? 'pointer' : 'default' }} onClick={() => s.turn != null && jump(s.turn)}>
+              <span className={`pill ${s.result === 'pass' ? 'good' : s.result === 'fail' ? 'bad' : 'plain'}`} style={{ width: 54, justifyContent: 'center' }}>{s.result === 'pass' ? <Check size={12} /> : s.result === 'fail' ? <X size={12} /> : null}{s.result}</span>
+              <span><b>{kpiName(s.kpi)}</b><span className="muted" style={{ display: 'block' }}>{s.note}</span></span></div>)}
+          </Widget>
+          <Widget icon={ListTodo} title="Recommended actions" sub="Suggested by the analysis; a person decides">
+            {!c.actions.length && <span className="small muted">Nothing to follow up.</span>}
+            {c.actions.map((x: any) => <div key={x.id} className="card" style={{ padding: 12, boxShadow: 'none', cursor: 'pointer' }} onClick={() => setActionOpen(x.id)}>
+              <div className="row"><span className={`pill ${PRIORITY_TONE[x.priority]}`}>{x.priority}</span><span className="pill brand">{ACTION_LABEL[x.type] || x.type}</span>
+                <span className="pill plain right">{x.status.replace('_', ' ')}</span></div>
+              <b style={{ display: 'block', marginTop: 6 }}>{x.title}</b><span className="small muted">{x.reason}</span>
+              {x.draft_message && <div className="bubble-ar small" style={{ marginTop: 6, padding: 8, borderRadius: 10, background: 'var(--panel-2)' }}>{x.draft_message}</div>}
+            </div>)}
+          </Widget>
+        </div>}
 
 
         {(c.repeat_of_call || c.later_calls?.length > 0) && <Widget icon={Repeat2} title="This customer's other calls">
