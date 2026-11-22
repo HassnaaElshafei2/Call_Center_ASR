@@ -277,8 +277,7 @@ function ReviewCard({ c, ent, cats, onDone }: any) {
     try { await api(`/e/${ent}/calls/${c.id}/review`, { method: 'POST', json: { resolution: res, satisfaction: Number(satv), reason_code: reason } }); toast('Review saved'); onDone() }
     finally { setBusy(false) }
   }
-  return <Widget icon={ClipboardCheck} title={c.needs_review ? 'Needs your review' : 'Review'} sub={c.review_reason || 'Approve or correct the labels'}
-    style={c.needs_review ? { borderColor: 'var(--gold)' } : undefined}>
+  return <Widget icon={ClipboardCheck} title={c.needs_review ? 'Needs your review' : 'Review'} sub={c.review_reason || 'Approve or correct the labels'}>
     {so && <div className="small" style={{ padding: 10, borderRadius: 10, background: 'var(--panel-2)' }}><b>Second opinion:</b> {so.agree ? 'agrees' : `disagrees (${title(so.resolution)}, ${so.satisfaction}/5)`}. <span className="muted">{so.why}</span></div>}
     <div className="grid g3" style={{ gap: 8 }}>
       <label className="field">Outcome<select className="input" value={res} onChange={e => setRes(e.target.value)}>{Object.entries(RESOLUTION).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}</select></label>
