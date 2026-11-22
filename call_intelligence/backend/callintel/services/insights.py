@@ -45,22 +45,30 @@ def _who(call: Call) -> str:
     return (call.customer.name if call.customer and call.customer.name else "") or "A customer"
 
 
-def unhappy_without_callback(c: Ctx, days: int = 30) -> list[Call]:
-    """Each customer's latest unhappy call (very low satisfaction or an angry/frustrated ending) with no follow-up
-    action accepted after it (a merely suggested action doesn't count)."""
+def followup_state(c: Ctx, call: Call) -> str:
+    """What happened after a call: "done" (a follow-up was completed), "planned" (one is open or in progress),
+    or "none" (nothing, or only a suggestion nobody accepted)."""
+    q = c.db.query(Action.status).filter(Action.created_at >= call.started_at,
+                                         (Action.customer_id == call.customer_id) if call.customer_id else (Action.call_id == call.id))
+    states = {s for (s,) in q}
+    return "done" if "done" in states else "planned" if states & {"open", "in_progress"} else "none"
+
+
+def unhappy_calls(c: Ctx, days: int = 30) -> list[tuple[Call, str]]:
+    """Each customer's latest unhappy call (very low satisfaction or an angry/frustrated ending) with its follow-up state."""
     calls = _done_calls(c, days).filter((Call.mood_end.in_(UNHAPPY)) | (Call.satisfaction <= 2)).order_by(Call.started_at.desc()).all()
     seen, out = set(), []
     for call in calls:
         key = call.customer_id or call.id
-        if key in seen:
-            continue
-        seen.add(key)
-        followed = c.db.query(Action).filter(Action.status.in_(("open", "in_progress", "done")),
-                                              Action.created_at >= call.started_at,
-                                              (Action.customer_id == call.customer_id) if call.customer_id else (Action.call_id == call.id)).first()
-        if not followed:
-            out.append(call)
+        if key not in seen:
+            seen.add(key)
+            out.append((call, followup_state(c, call)))
     return out
+
+
+def unhappy_without_callback(c: Ctx, days: int = 30) -> list[Call]:
+    """Unhappy customers with no follow-up accepted after their call (a merely suggested action doesn't count)."""
+    return [call for call, state in unhappy_calls(c, days) if state == "none"]
 
 
 def weakest_reason(c: Ctx, days: int = 30) -> dict | None:
@@ -202,12 +210,12 @@ def home(c: Ctx) -> dict:
                        "enterprise": call.enterprise_id, "customer_id": call.customer_id,
                        "title": f"{_who(call)} called again about {reason_name(call)}",
                        "body": short(f"A repeat call within 14 days{mood}. {call.summary}"),
-                       "tags": ["Repeat call"], "primary": "callback"})
+                       "tags": ["Repeat call"], "primary": "callback", "followup": followup_state(c, call)})
     for call in recent.filter(Call.mood_end.in_(UNHAPPY), Call.repeat_of.is_(None)).order_by(Call.started_at.desc()).limit(2):
         events.append({"tone": "bad", "kind": "unhappy", "at": call.started_at.isoformat(), "call_id": call.id,
                        "enterprise": call.enterprise_id, "customer_id": call.customer_id,
                        "title": f"{_who(call)} ended the call {call.mood_end}", "body": short(call.summary),
-                       "tags": [call.mood_end.capitalize()], "primary": "callback"})
+                       "tags": [call.mood_end.capitalize()], "primary": "callback", "followup": followup_state(c, call)})
     for p in promises_due(c, 1)[:2]:
         cust = c.db.get(Customer, p.customer_id) if p.customer_id else None
         when = "today" if p.due_date <= date.today() else "tomorrow"
@@ -227,11 +235,15 @@ def home(c: Ctx) -> dict:
                        "body": "The second opinion disagreed, or the call needs a human check.", "tags": ["Review"]})
     events.sort(key=lambda e: e["at"], reverse=True)
 
-    unhappy = unhappy_without_callback(c)
+    unhappy = [(call, st) for call, st in unhappy_calls(c) if st != "done"]       # until they are actually called back
+    unplanned = sum(st == "none" for _, st in unhappy)
     due = promises_due(c, 7)
     coach = coaching_need(c)
     needs = [n for n in [
-        {"kind": "callbacks", "count": len(unhappy), "title": "Call back unhappy customers", "sub": "Ask Sia can draft the messages in Egyptian Arabic"} if unhappy else None,
+        {"kind": "callbacks", "count": len(unhappy), "unplanned": unplanned, "title": "Call back unhappy customers",
+         "sub": (f"{unplanned} not planned yet · {len(unhappy) - unplanned} planned in the Action Center" if unplanned and unplanned < len(unhappy)
+                 else "Planned in the Action Center, waiting to be done" if not unplanned
+                 else "Ask Sia can draft the messages in Egyptian Arabic")} if unhappy else None,
         {"kind": "promises", "count": len(due), "title": "Keep promises due this week", "sub": "Technician visits, refunds, callbacks"} if due else None,
         {"kind": "review", "count": rc, "title": "Review analyses", "sub": "The analysis needs a human check"} if rc else None,
         {"kind": "coaching", "count": None, "agent_id": coach["agent_id"], "title": f"Coach {coach['agent']} on {coach['item'].lower()}",

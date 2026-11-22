@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUp, ChevronRight, ClipboardCheck, Clock3, Frown, GraduationCap, History, ListTodo, Phone, SparklesFill, Tools,
+import { ArrowUp, Check, ChevronRight, ClipboardCheck, Clock3, Frown, GraduationCap, History, ListTodo, Phone, SparklesFill, Tools,
   FileText, Users } from '@/components/icons'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -46,7 +46,8 @@ export default function Home() {
     qc.invalidateQueries({ queryKey: ['home', ent] })
   }
   const openNeed = (n: any) => {
-    if (n.kind === 'callbacks') openAsk('Which unhappy customers have no callback yet? Propose callbacks for them.')
+    // some not planned yet: Ask Sia proposes them; all planned: the Action Center, where they get done
+    if (n.kind === 'callbacks') n.unplanned ? openAsk('Which unhappy customers have no callback yet? Propose callbacks for them.') : nav(`${base}/actions`)
     else if (n.kind === 'promises') nav(`${base}/actions?tab=promises`)
     else if (n.kind === 'review') nav(`${base}/review`)
     else if (n.kind === 'coaching') nav(`${base}/agents/${n.agent_id}`)
@@ -83,7 +84,7 @@ export default function Home() {
             <div className="actions"><button className="btn sm ghost" onClick={() => nav(`${base}/calls`)}>All calls<ChevronRight size={16} /></button></div></div>
           {home.isLoading ? <Skeleton h={300} /> : !h?.events?.length ? <Empty icon={History} title="Quiet so far">New analysed calls show up here.</Empty> :
             <div className="timeline">{h.events.map((e: any, i: number) => {
-              const isPrimary = e.primary === 'callback' && e.call_id && !primaryUsed
+              const isPrimary = e.primary === 'callback' && e.call_id && e.followup === 'none' && !primaryUsed
               if (isPrimary) primaryUsed = true
               return <div key={i} className="ev" style={{ ['--c' as any]: TONE_DOT[e.tone] }}>
                 <div className="h"><b>{e.title}</b><span>{new Date(e.at).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
@@ -95,7 +96,9 @@ export default function Home() {
                   {e.kind === 'review' && <button className="btn sm" onClick={() => nav(`${base}/review`)}>Review</button>}
                   {e.kind === 'positive' && e.link && <button className="btn sm" onClick={() => nav(`/e/${e.enterprise}/calls?reason=${e.link.reason}&period=30d`)}>See the calls</button>}
                   {e.call_id && <button className="btn sm" onClick={() => nav(`/e/${e.enterprise ?? ent}/calls/${e.call_id}`)}>Open call</button>}
-                  {e.primary === 'callback' && e.call_id && <button className={`btn sm ${isPrimary ? 'primary' : ''}`} onClick={() => callback(e)}>Plan a callback</button>}
+                  {e.primary === 'callback' && e.call_id && (e.followup === 'done' ? <span className="pill good"><Check size={13} />Called back</span>
+                    : e.followup === 'planned' ? <button className="btn sm" onClick={() => nav(`${base}/actions`)}><Check size={14} />Callback planned</button>
+                    : <button className={`btn sm ${isPrimary ? 'primary' : ''}`} onClick={() => callback(e)}>Plan a callback</button>)}
                 </div>
               </div>
             })}</div>}
