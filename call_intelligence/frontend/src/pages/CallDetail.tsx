@@ -45,6 +45,29 @@ export default function CallDetail() {
   const current = useMemo(() => c?.turns?.find((x: any) => t >= x.start && t < x.end)?.idx, [c, t])
   useEffect(() => { if (playing && current != null) turnRefs.current[current]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }, [current, playing])
 
+  // Size the transcript to the page: as tall as its lines when they fit; when the side column is taller, a long
+  // transcript grows into that free space (and scrolls inside). It never shrinks below ~280 px, so when the left
+  // column is the taller one the section just grows: nothing can overlap the row below.
+  const leftRef = useRef<HTMLDivElement>(null), rightRef = useRef<HTMLDivElement>(null), listRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const left = leftRef.current, right = rightRef.current, list = listRef.current
+    if (!left || !right || !list) return
+    const wide = matchMedia('(min-width: 1101px)')
+    const fit = () => {
+      if (!wide.matches) { list.style.maxHeight = ''; return }
+      const others = left.offsetHeight - list.offsetHeight
+      const free = right.offsetHeight - others
+      const natural = list.scrollHeight
+      // a transcript that almost fits is shown whole (no scrolling for the last few lines)
+      const h = Math.round(natural <= free + 90 ? natural : Math.max(Math.min(natural, 280), free))
+      if (list.style.maxHeight === '' || Math.abs(list.offsetHeight - h) > 1) list.style.maxHeight = `${h}px`
+    }
+    let raf = 0
+    const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit) })
+    ro.observe(left); ro.observe(right); wide.addEventListener('change', fit); fit()
+    return () => { ro.disconnect(); cancelAnimationFrame(raf); wide.removeEventListener('change', fit) }
+  }, [c?.id, c?.turns?.length, !!a])
+
   const jump = (idx: number) => {
     const turn = c.turns.find((x: any) => x.idx === idx)
     if (!turn) return
@@ -83,8 +106,8 @@ export default function CallDetail() {
           <div><b>{({ queued: 'Queued', waiting_asr: 'Waiting for the transcription service', transcribing: 'Transcribing', analyzing: 'Analysing', failed: 'Processing failed' } as any)[c.status]}</b>
             <div className="small muted">{c.status_detail}</div></div></div>}
 
-        <div className={`split ${a ? 'fit' : ''}`}>
-          <div className="stack call-left" style={{ gap: 18 }}>
+        <div className="split">
+          <div className="stack call-left" ref={leftRef} style={{ gap: 18 }}>
             <section className="card player">
               <div className="row">
                 <button className="btn icon primary" disabled={!audioUrl} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
@@ -104,7 +127,7 @@ export default function CallDetail() {
             </section>
 
             <Widget icon={MessageSquareQuote} title="Transcript" className="transcript-card" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
-              {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript-box"><div className="transcript">
+              {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript-box"><div className="transcript" ref={listRef}>
                 {c.turns.map((x: any) => {
                   const mood = x.mood && MOODS[x.mood]
                   return <div key={x.idx} ref={el => { turnRefs.current[x.idx] = el }} className={`turn ${current === x.idx ? 'now' : ''} ${flash === x.idx ? 'flash' : ''}`}
@@ -124,7 +147,7 @@ export default function CallDetail() {
                 })}
               </div></div>}
             </Widget>
-            {a && <div className="grid g2" style={{ alignItems: 'stretch', flex: 'none' }}>
+            {a && <div className="grid g2" style={{ alignItems: 'stretch' }}>
               <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model" style={canReview ? undefined : { gridColumn: '1 / -1' }}>
                 <Behaviour m={c.metrics} />
               </Widget>
@@ -132,7 +155,7 @@ export default function CallDetail() {
             </div>}
           </div>
 
-          <div className="stack" style={{ gap: 18 }}>
+          <div className="stack" ref={rightRef} style={{ gap: 18 }}>
             {a ? <>
               <Widget icon={Sparkles} title="Summary" sub={`Analysed by ${c.analysis_meta?.model}`}>
                 <p style={{ margin: 0 }}>{c.summary}</p>
