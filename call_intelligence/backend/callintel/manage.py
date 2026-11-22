@@ -44,6 +44,7 @@ def main(argv=None):
     imp.add_argument("--keep-dates", action="store_true", help="keep the real calls' original recording dates")
     imp.add_argument("--no-analysis", action="store_true")
     imp.add_argument("--only", choices=["real", "synthetic", "demo-audio"], action="append")
+    sub.add_parser("adopt-export", help="after loading a database export: passwords and phone matching from this .env")
     a = sub.add_parser("analyze-now")
     a.add_argument("--workers", type=int, default=4)
     u = sub.add_parser("create-user")
@@ -91,6 +92,26 @@ def main(argv=None):
                 if f.is_dir() and scripts.is_dir():
                     print(f"demo calls with audio: {importers.attach_demo_audio(db, f, scripts)}")
         print("done; analysis is queued for the new calls (run the worker, or: manage analyze-now)")
+    elif args.cmd == "adopt-export":
+        import os
+        from .config import settings
+        from .models import Customer
+        from .seed import DEMO_USERS
+        from .services.phones import hash_phone
+        st = settings()
+        with session_scope() as db:
+            admin = db.query(User).filter_by(email=st.admin_email.lower()).first() or User(email=st.admin_email.lower(), name="Administrator")
+            admin.password_hash, admin.is_superadmin = hash_password(st.admin_password), True
+            db.add(admin)
+            demo_pw = os.environ.get("DEMO_PASSWORD", "demo-change-me")
+            for email, *_ in DEMO_USERS:
+                u = db.query(User).filter_by(email=email).first()
+                if u:
+                    u.password_hash = hash_password(demo_pw)
+            n = 0
+            for cu in db.query(Customer).filter(Customer.phone_full != ""):
+                cu.phone_hash, n = hash_phone(cu.phone_full), n + 1
+        print(f"passwords set from this .env ({st.admin_email} and the demo users); {n} customer phone numbers re-keyed")
     elif args.cmd == "analyze-now":
         from .worker import run_one
         done = 0

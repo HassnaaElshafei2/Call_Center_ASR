@@ -57,6 +57,18 @@ Optional: import the 76 synthetic demo calls. The worker analyses them in a few 
 docker compose exec app python -m callintel.manage demo /app/demo_data/scripts
 ```
 
+### Real and synthetic data
+
+The calls live in the private `Call_Center_Data` repository.
+
+- **Ready-to-load export (recommended):** `app_export/` there holds the database with every call already analysed, plus the recordings. Its README has the five commands to load it; the last one is `manage adopt-export`, which applies your `.env` passwords and phone key.
+- **Import from the raw folders instead**, then let the worker analyse everything (about 45 minutes on the DGX):
+  ```bash
+  docker compose exec app python -m callintel.manage import-data /path/to/Call_Center_Data
+  ```
+
+Every view has a **Data** filter: real calls, Mohammed's synthetic calls, or the 76 demo calls.
+
 ### Transcription
 
 Without `ASR_SERVICE_URL`, uploaded recordings are kept in a **waiting for transcription** state. Once a service is set, **Administration → System → Retry** sends them through. Two ways to provide it:
