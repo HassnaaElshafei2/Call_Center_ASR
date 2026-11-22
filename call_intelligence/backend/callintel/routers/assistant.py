@@ -116,6 +116,11 @@ def unique_links(links: list[dict], n: int = 3) -> list[dict]:
     return list(reversed(out[:n]))
 
 
+def collapse_loops(text: str) -> str:
+    """Safety net for a model stuck in a loop: a word or short phrase repeated 3+ times in a row is kept once."""
+    return re.sub(r"(\b[\w\u0600-\u06FF]+(?:\s+[\w\u0600-\u06FF]+){0,2})(?:\s+\1\b){2,}", r"\1", text)
+
+
 def split_followups(text: str) -> tuple[str, list[str]]:
     """Take the model's closing "FOLLOWUPS: a | b" line off the answer."""
     m = re.search(r"(?:^|\n)[ \t*_]*FOLLOW-?UPS[ \t*_]*:[ \t*_]*(.+?)\s*$", text, flags=re.I | re.S)
@@ -143,10 +148,10 @@ def run(c: Ctx, body: AskBody):
     seen_ids: set[str] = set()          # every call id any tool returned, to repair the model's references
     try:
         for _ in range(MAX_ROUNDS):
-            reply = llm.chat(msgs, tools=tools, max_tokens=1500, temperature=0.1, timeout=120)
+            reply = llm.chat(msgs, tools=tools, max_tokens=1500, temperature=0.1, timeout=120, repetition_penalty=1.08)
             calls = reply.get("tool_calls") or []
             if not calls:
-                text, follow = split_followups((reply.get("content") or "").strip())
+                text, follow = split_followups(collapse_loops((reply.get("content") or "").strip()))
                 text = fix_refs(text, {**dict.fromkeys(seen_ids), **tb.calls})
                 cited = [i for i in dict.fromkeys(re.findall(r"\[call:([0-9a-f]{32})\]", text))]
                 for cid in cited:                   # cited from a customer list etc.: load the call so its link shows
@@ -154,7 +159,8 @@ def run(c: Ctx, body: AskBody):
                         x = scope(c, c.db.query(Call)).filter(Call.id == cid).first()
                         if x:
                             tb._brief(x)
-                yield _event("answer", text=text, calls=[tb.calls[i] for i in cited if i in tb.calls],
+                shown = [i for i in dict.fromkeys(cited + tb.featured) if i in tb.calls]
+                yield _event("answer", text=text, calls=[tb.calls[i] for i in shown],
                              links=unique_links(tb.links), proposals=tb.proposals, chips=tb.chips[-1:] if tb.chips else [],
                              followups=follow)
                 return
@@ -175,11 +181,11 @@ def run(c: Ctx, body: AskBody):
         # out of steps: answer from what the tools returned so far instead of giving up
         msgs.append({"role": "user", "content": "Stop using tools now and answer from the results you already have. "
                      "Say briefly if something is incomplete. End with the FOLLOWUPS line."})
-        reply = llm.chat(msgs, max_tokens=1500, temperature=0.1, timeout=120)
-        text, follow = split_followups((reply.get("content") or "").strip())
+        reply = llm.chat(msgs, max_tokens=1500, temperature=0.1, timeout=120, repetition_penalty=1.08)
+        text, follow = split_followups(collapse_loops((reply.get("content") or "").strip()))
         text = fix_refs(text, {**dict.fromkeys(seen_ids), **tb.calls})
         cited = [i for i in dict.fromkeys(re.findall(r"\[call:([0-9a-f]{32})\]", text)) if i in tb.calls]
-        yield _event("answer", text=text, calls=[tb.calls[i] for i in cited], links=unique_links(tb.links),
+        yield _event("answer", text=text, calls=[tb.calls[i] for i in dict.fromkeys(cited + tb.featured) if i in tb.calls], links=unique_links(tb.links),
                      proposals=tb.proposals, chips=tb.chips[-1:] if tb.chips else [], followups=follow)
     except llm.LLMError as e:
         yield _event("error", message="The language model isn't available right now. " + str(e)[:200])

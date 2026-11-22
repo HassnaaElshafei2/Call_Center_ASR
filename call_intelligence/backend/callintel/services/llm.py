@@ -30,11 +30,13 @@ def _headers():
 
 def chat(messages: list[dict], *, model: str | None = None, max_tokens: int = 2000, temperature: float = 0.1,
          json_schema: dict | None = None, json_mode: bool = False, tools: list[dict] | None = None,
-         retries: int = 2, timeout: float | None = None) -> dict:
+         retries: int = 2, timeout: float | None = None, repetition_penalty: float | None = None) -> dict:
     """One chat completion; returns the assistant message (content, tool_calls).
     json_schema is accepted for short outputs only (see chat_json); json_mode asks for any JSON object."""
     body = {"model": model or settings().llm_model, "messages": messages, "max_tokens": max_tokens,
             "temperature": temperature, "stream": False, "chat_template_kwargs": {"enable_thinking": False}}
+    if repetition_penalty:
+        body["repetition_penalty"] = repetition_penalty         # vLLM: discourages a word repeated in a loop
     if json_schema:
         body["response_format"] = {"type": "json_schema", "json_schema": {"name": "output", "strict": True,
                                                                           "schema": json_schema}}

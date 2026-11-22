@@ -97,6 +97,7 @@ class Toolbox:
         self.calls: dict[str, dict] = {}
         self.links: list[dict] = []
         self.proposals: list[dict] = []
+        self.featured: list[str] = []          # calls always listed under the answer, whatever the text cites
         self.agents = {a.name: a.id for a in c.db.query(Agent).filter(Agent.enterprise_id.in_(c.ents))}
         self.cat_names = {x.code: x.name for x in c.db.query(Category).filter(Category.enterprise_id.in_(c.ents))}
 
@@ -253,6 +254,10 @@ class Toolbox:
     def unhappy_without_callback(self, limit=50, **_):
         from ..services.insights import unhappy_without_callback
         calls = unhappy_without_callback(self.c, 30)                 # always the Home page's window, so the numbers agree
+        for x in calls[:15]:
+            self._brief(x)
+            if x.id not in self.featured:
+                self.featured.append(x.id)
         days = 30
         self.links.append({"label": "Customers at risk", "page": "customers", "filters": {"risk": "high"}, "count": len(calls)})
         if calls and not any(p.get("auto") == "unhappy" for p in self.proposals):
