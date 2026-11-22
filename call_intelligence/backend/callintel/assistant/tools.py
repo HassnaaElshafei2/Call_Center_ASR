@@ -67,6 +67,13 @@ def definitions(c: Ctx) -> list[dict]:
             "name": {"type": "string"}, "filters": fs, "limit": {"type": "integer", "minimum": 1, "maximum": 25}}),
         fn("agent_stats", "Per-agent performance (calls, resolution rate, satisfaction, QA) for the filters; "
                           "or one agent by name.", {"agent": {"type": "string"}, "filters": fs}),
+        fn("unhappy_without_callback", "The customers who ended their latest call in the last 30 days unhappy (angry or "
+                                       "frustrated, or predicted satisfaction 1-2) and have no accepted follow-up yet (a "
+                                       "suggested one doesn't count): the same list as the Home page. 'total' is the full "
+                                       "count; one call answers 'who needs a callback?'. It also attaches one callback "
+                                       "proposal covering all of them (the user confirms it), so don't call propose_action "
+                                       "for these customers.",
+           {"limit": {"type": "integer", "minimum": 1, "maximum": 50}}),
         fn("list_actions", "Follow-up actions (callbacks, offers, escalations...) and their status and outcome.",
            {"status": {"type": "array", "items": {"type": "string",
                                                   "enum": ["suggested", "open", "in_progress", "done", "dismissed"]}},
@@ -243,9 +250,26 @@ class Toolbox:
                                                  "priority": a.priority, "due": str(a.due_date) if a.due_date else None,
                                                  "outcome": a.outcome, "call_id": a.call_id} for a in rows[:25]]}
 
+    def unhappy_without_callback(self, limit=50, **_):
+        from ..services.insights import unhappy_without_callback
+        calls = unhappy_without_callback(self.c, 30)                 # always the Home page's window, so the numbers agree
+        days = 30
+        self.links.append({"label": "Customers at risk", "page": "customers", "filters": {"risk": "high"}, "count": len(calls)})
+        if calls and not any(p.get("auto") == "unhappy" for p in self.proposals):
+            self.proposals.append({"call_ids": [x.id for x in calls], "type": "callback", "priority": "high", "auto": "unhappy",
+                                   "title": f"Call back {len(calls)} unhappy customer{'s' if len(calls) > 1 else ''}",
+                                   "reason": "They ended their latest call angry, frustrated or very unsatisfied, and nobody has followed up."})
+        return {"total": len(calls), "period_days": days, "callback_proposal": "attached for all of them",
+                "customers": [self._brief(x) for x in calls[: min(int(limit or 50), 50)]]}
+
     def propose_action(self, call_ids, type, title, reason="", priority="medium"):
         ok = [r[0] for r in apply_filters(self.c, self.c.db.query(Call.id), CallFilters(period="all"),
                                           use_window=False).filter(Call.id.in_(call_ids))]
+        # a proposal already covering these calls with the same action (e.g. the callback for all unhappy customers,
+        # or the same proposal made twice) is not repeated
+        for q in self.proposals:
+            if q["type"] == type and set(ok) <= set(q["call_ids"]):
+                return {"proposed": True, "calls": len(ok), "note": f"already covered by the proposal '{q['title']}'"}
         p = {"call_ids": ok, "type": type, "title": title, "reason": reason, "priority": priority}
         self.proposals.append(p)
         return {"proposed": True, "calls": len(ok), "note": "shown to the user with a confirm button; not created yet"}

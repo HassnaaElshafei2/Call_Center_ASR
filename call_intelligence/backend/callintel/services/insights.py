@@ -55,7 +55,7 @@ def unhappy_without_callback(c: Ctx, days: int = 30) -> list[Call]:
         if key in seen:
             continue
         seen.add(key)
-        followed = c.db.query(Action).filter(Action.status.in_(("todo", "in_progress", "done")),
+        followed = c.db.query(Action).filter(Action.status.in_(("open", "in_progress", "done")),
                                               Action.created_at >= call.started_at,
                                               (Action.customer_id == call.customer_id) if call.customer_id else (Action.call_id == call.id)).first()
         if not followed:

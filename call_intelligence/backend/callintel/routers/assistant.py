@@ -16,14 +16,16 @@ from .common import scope
 from ..services import llm
 
 router = APIRouter(prefix="/api/e/{ent}")
-MAX_ROUNDS = 6
+MAX_ROUNDS = 8
 LABELS = {"count_calls": "Counting calls", "list_calls": "Finding calls", "get_call": "Reading the call",
           "search_transcripts": "Searching what was said in calls", "find_customers": "Looking at customers",
           "agent_stats": "Comparing agents", "list_actions": "Checking follow-up actions",
+          "unhappy_without_callback": "Finding unhappy customers without a callback",
           "propose_action": "Preparing an action for you to confirm"}
 LABELS_AR = {"count_calls": "بعد المكالمات", "list_calls": "بدور على المكالمات", "get_call": "بقرا المكالمة",
              "search_transcripts": "بدور في كلام المكالمات", "find_customers": "ببص على العملاء",
              "agent_stats": "بقارن الموظفين", "list_actions": "ببص على المتابعات",
+             "unhappy_without_callback": "بدور على العملاء الزعلانين اللي محدش كلمهم",
              "propose_action": "بجهز متابعة تأكدها"}
 
 SYSTEM = """You are Sia AI, the assistant inside Sia Listen, a customer-service call analysis platform for {companies}.
@@ -103,6 +105,17 @@ def fix_refs(text: str, known: dict) -> str:
     return re.sub(r"\[call:([0-9a-fA-F]{4,40})\]", repl, text)
 
 
+def unique_links(links: list[dict], n: int = 3) -> list[dict]:
+    """The latest distinct page links (a tool called several times adds the same link each time)."""
+    out, seen = [], set()
+    for l in reversed(links):
+        key = (l.get("label"), l.get("page"), json.dumps(l.get("filters") or {}, sort_keys=True), l.get("enterprise"))
+        if key not in seen:
+            seen.add(key)
+            out.append(l)
+    return list(reversed(out[:n]))
+
+
 def split_followups(text: str) -> tuple[str, list[str]]:
     """Take the model's closing "FOLLOWUPS: a | b" line off the answer."""
     m = re.search(r"(?:^|\n)[ \t*_]*FOLLOW-?UPS[ \t*_]*:[ \t*_]*(.+?)\s*$", text, flags=re.I | re.S)
@@ -142,7 +155,7 @@ def run(c: Ctx, body: AskBody):
                         if x:
                             tb._brief(x)
                 yield _event("answer", text=text, calls=[tb.calls[i] for i in cited if i in tb.calls],
-                             links=tb.links[-3:], proposals=tb.proposals, chips=tb.chips[-1:] if tb.chips else [],
+                             links=unique_links(tb.links), proposals=tb.proposals, chips=tb.chips[-1:] if tb.chips else [],
                              followups=follow)
                 return
             msgs.append({"role": "assistant", "content": reply.get("content") or "", "tool_calls": calls})
@@ -159,9 +172,15 @@ def run(c: Ctx, body: AskBody):
                     yield _event("chips", chips=tb.chips[-1]["chips"])
                 msgs.append({"role": "tool", "tool_call_id": tc.get("id", name), "name": name,
                              "content": json.dumps(result, ensure_ascii=False, default=str)[:12000]})
-        yield _event("answer", text="I couldn't finish this in a few steps. Try a narrower question."
-                     if body.lang != "ar" else "معرفتش أخلص ده في خطوات قليلة. جرب سؤال أدق.",
-                     calls=[], links=tb.links[-3:], proposals=tb.proposals, chips=[], followups=[])
+        # out of steps: answer from what the tools returned so far instead of giving up
+        msgs.append({"role": "user", "content": "Stop using tools now and answer from the results you already have. "
+                     "Say briefly if something is incomplete. End with the FOLLOWUPS line."})
+        reply = llm.chat(msgs, max_tokens=1500, temperature=0.1, timeout=120)
+        text, follow = split_followups((reply.get("content") or "").strip())
+        text = fix_refs(text, {**dict.fromkeys(seen_ids), **tb.calls})
+        cited = [i for i in dict.fromkeys(re.findall(r"\[call:([0-9a-f]{32})\]", text)) if i in tb.calls]
+        yield _event("answer", text=text, calls=[tb.calls[i] for i in cited], links=unique_links(tb.links),
+                     proposals=tb.proposals, chips=tb.chips[-1:] if tb.chips else [], followups=follow)
     except llm.LLMError as e:
         yield _event("error", message="The language model isn't available right now. " + str(e)[:200])
 

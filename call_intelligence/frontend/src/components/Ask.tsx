@@ -236,14 +236,15 @@ export function AskLauncher() {
   const mac = /Mac|iPhone|iPad/.test(navigator.platform)
   useEffect(() => {
     const onAsk = (e: Event) => { const q = (e as CustomEvent).detail?.q; setOpen(true); if (q) setInitial(x => ({ q, n: x.n + 1 })) }
-    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(o => !o) } }
+    // a question passed in is asked once; reopening the panel (button or Ctrl/Cmd K) starts on the default view
+    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setInitial(x => ({ n: x.n })); setOpen(o => !o) } }
     addEventListener('sia-ask', onAsk); addEventListener('keydown', onKey)
     return () => { removeEventListener('sia-ask', onAsk); removeEventListener('keydown', onKey) }
   }, [])
   if (onAskPage) return null
   return <>
-    {open && <AskPanel onClose={() => setOpen(false)} initial={initial} />}
-    {!open && <button className="ask-fab" onClick={() => setOpen(true)} aria-label="Open Ask Sia" title="Ask Sia about your calls">
+    {open && <AskPanel onClose={() => { setOpen(false); setInitial(x => ({ n: x.n })) }} initial={initial} />}
+    {!open && <button className="ask-fab" onClick={() => { setInitial(x => ({ n: x.n })); setOpen(true) }} aria-label="Open Ask Sia" title="Ask Sia about your calls">
       <span className="spark"><SparklesFill size={16} /></span><span>Ask <span className="brand-name">Sia</span></span><kbd>{mac ? '⌘K' : 'Ctrl K'}</kbd>
     </button>}
   </>
