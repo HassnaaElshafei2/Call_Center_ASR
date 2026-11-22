@@ -22,6 +22,9 @@ class ElevenLabsError(RuntimeError):
 
 def transcribe(path: Path) -> dict:
     s = settings()
+    if not s.elevenlabs_api_key.isascii():
+        raise ElevenLabsError("ELEVENLABS_API_KEY contains characters like • (copied from a display that hides secrets?). "
+                              "Paste the full key into .env, then run: docker compose up -d")
     data = {"model_id": s.elevenlabs_stt_model, "diarize": "true", "tag_audio_events": "false",
             "timestamps_granularity": "word"}
     if s.elevenlabs_language:

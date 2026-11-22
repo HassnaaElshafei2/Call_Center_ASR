@@ -39,7 +39,7 @@ function Status() {
   if (!data) return <Skeleton h={300} />
   return <div className="grid g3">
     <Widget icon={Cpu} title="Language models" sub="DGX Spark gateway">
-      <dl className="kv"><dt>Status</dt><dd>{data.llm.configured ? <span className="pill good">connected</span> : <span className="pill bad">LLM_API_KEY missing</span>}</dd>
+      <dl className="kv"><dt>Status</dt><dd>{data.llm.configured ? <span className="pill good">connected</span> : <span className="pill bad">LLM_API_KEY missing or invalid</span>}</dd>
         <dt>Analysis and Ask</dt><dd>{data.llm.model}</dd><dt>Second opinion</dt><dd>{data.llm.second_opinion}</dd><dt>Search</dt><dd>{data.llm.embedding}</dd></dl>
     </Widget>
     <Widget icon={Activity} title="Transcription service" sub={data.asr.provider === 'elevenlabs' ? 'ElevenLabs Scribe, a stand-in until the DGX hosts our model (synthetic calls only)' : "Mohammed's fine-tuned Cohere model + speaker separation"}>

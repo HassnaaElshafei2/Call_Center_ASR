@@ -22,6 +22,9 @@ def _headers():
     key = settings().llm_api_key
     if not key:
         raise LLMError("LLM_API_KEY is not set")
+    if not key.isascii() or " " in key:
+        raise LLMError("LLM_API_KEY isn't a valid key: it contains characters like • or spaces (a key copied from a "
+                       "display that hides secrets?). Paste the full key into .env, then run: docker compose up -d")
     return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
@@ -118,4 +121,5 @@ def embed(texts: list[str], batch: int = 32) -> list[list[float]]:
 
 
 def available() -> bool:
-    return bool(settings().llm_api_key)
+    key = settings().llm_api_key
+    return bool(key) and key.isascii() and " " not in key
