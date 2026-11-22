@@ -154,7 +154,7 @@ export function Shell() {
 
 // ---------------------------------------------------------------- page header bar
 export function Topbar({ title, crumb, actions }: { title: ReactNode; crumb?: ReactNode; actions?: ReactNode }) {
-  const { ent, current, base } = useEnt()
+  const { ent, current, base, list } = useEnt()
   const { me } = useAuth()
   const [q, setQ] = useState('')
   const [upload, setUpload] = useState(false)
@@ -181,7 +181,7 @@ export function Topbar({ title, crumb, actions }: { title: ReactNode; crumb?: Re
       </form>
       {actions}
       <AlertsBell />
-      {ent !== 'all' && can(me, 'upload', ent) && <button className="btn" onClick={() => setUpload(true)}><Upload size={16} />Upload calls</button>}
+      {(ent === 'all' ? list.some(e => can(me, 'upload', e.id)) : can(me, 'upload', ent)) && <button className="btn" onClick={() => setUpload(true)}><Upload size={16} />Upload calls</button>}
       <UploadDialog open={upload} onClose={() => setUpload(false)} />
     </header>
   )
