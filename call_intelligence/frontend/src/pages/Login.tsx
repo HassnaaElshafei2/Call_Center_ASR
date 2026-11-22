@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Loader2 } from '@/components/icons'
 import logo from '@/assets/brand/logo.svg'
 import logoWhite from '@/assets/brand/logo-white.svg'
@@ -7,7 +8,7 @@ import { api, token } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
 export default function Login() {
-  const { setMe } = useAuth()
+  const { me, setMe } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
@@ -22,6 +23,7 @@ export default function Login() {
       location.assign(next && next.startsWith('/') ? next : '/')
     } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
   }
+  if (me) return <Navigate to="/" replace />                // already signed in
   return (
     <div className="login">
       <form className="login-card" onSubmit={submit}>

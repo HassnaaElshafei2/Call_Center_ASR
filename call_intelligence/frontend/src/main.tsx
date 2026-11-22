@@ -36,7 +36,8 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 function Landing() {
-  const { me } = useAuth()
+  const { me, loading } = useAuth()
+  if (loading) return <div style={{ padding: 40 }}><Skeleton h={200} /></div>     // wait for the session before deciding
   if (!me) return <Navigate to="/login" replace />
   const first = me.enterprises.length > 1 ? 'all' : me.enterprises[0]?.id ?? 'all'
   return <Navigate to={`/e/${first}/home`} replace />
