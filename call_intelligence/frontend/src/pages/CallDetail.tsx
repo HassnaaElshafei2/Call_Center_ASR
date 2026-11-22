@@ -83,7 +83,7 @@ export default function CallDetail() {
           <div><b>{({ queued: 'Queued', waiting_asr: 'Waiting for the transcription service', transcribing: 'Transcribing', analyzing: 'Analysing', failed: 'Processing failed' } as any)[c.status]}</b>
             <div className="small muted">{c.status_detail}</div></div></div>}
 
-        <div className="split fill">
+        <div className="split">
           <div className="stack call-left" style={{ gap: 18 }}>
             <section className="card player">
               <div className="row">
@@ -103,7 +103,7 @@ export default function CallDetail() {
               {audioUrl && <audio ref={audio} src={audioUrl} preload="metadata" onTimeUpdate={e => setT(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />}
             </section>
 
-            <Widget icon={MessageSquareQuote} title="Transcript" className="grow" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
+            <Widget icon={MessageSquareQuote} title="Transcript" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
               {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript-box"><div className="transcript">
                 {c.turns.map((x: any) => {
                   const mood = x.mood && MOODS[x.mood]
@@ -134,6 +134,18 @@ export default function CallDetail() {
                   <span className={`pill ${s.result === 'pass' ? 'good' : s.result === 'fail' ? 'bad' : 'plain'}`} style={{ width: 54, justifyContent: 'center' }}>{s.result === 'pass' ? <Check size={12} /> : s.result === 'fail' ? <X size={12} /> : null}{s.result}</span>
                   <span><b>{kpiName(s.kpi)}</b><span className="muted" style={{ display: 'block' }}>{s.note}</span></span></div>)}
               </Widget>
+            </div>}
+            {a && <div className="grid g2" style={{ alignItems: 'start' }}>
+              <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model">
+                <Behaviour m={c.metrics} />
+              </Widget>
+              {(a.promises.length > 0 || a.opportunities.length > 0 || a.knowledge_gaps.length > 0 || a.risks.compliance_issues.length > 0) && <Widget icon={Lightbulb} title="Also found">
+                {a.risks.compliance_issues.map((x: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><ShieldAlert size={14} className="down" />{x}</div>)}
+                {c.promises.map((p: any) => <div key={p.id} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => p.turn != null && jump(p.turn)}><Handshake size={14} style={{ color: 'var(--gold-text)' }} />
+                  <span>Promise: {p.text}{p.due && <span className="muted"> · due {p.due}</span>}</span></div>)}
+                {a.opportunities.map((o: any, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => jump(o.turn)}><BadgeCheck size={14} className="up" /><span>{title(o.type)}: {o.note}</span></div>)}
+                {a.knowledge_gaps.map((g: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><Lightbulb size={14} style={{ color: 'var(--info)' }} /><span>Knowledge gap: {g}</span></div>)}
+              </Widget>}
             </div>}
           </div>
 
@@ -168,16 +180,6 @@ export default function CallDetail() {
                   {x.draft_message && <div className="bubble-ar small" style={{ marginTop: 6, padding: 8, borderRadius: 10, background: 'var(--panel-2)' }}>{x.draft_message}</div>}
                 </div>)}
               </Widget>
-            <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model">
-              <Behaviour m={c.metrics} />
-            </Widget>
-            {(a.promises.length > 0 || a.opportunities.length > 0 || a.knowledge_gaps.length > 0 || a.risks.compliance_issues.length > 0) && <Widget icon={Lightbulb} title="Also found">
-              {a.risks.compliance_issues.map((x: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><ShieldAlert size={14} className="down" />{x}</div>)}
-              {c.promises.map((p: any) => <div key={p.id} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => p.turn != null && jump(p.turn)}><Handshake size={14} style={{ color: 'var(--gold-text)' }} />
-                <span>Promise: {p.text}{p.due && <span className="muted"> · due {p.due}</span>}</span></div>)}
-              {a.opportunities.map((o: any, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap', cursor: 'pointer' }} onClick={() => jump(o.turn)}><BadgeCheck size={14} className="up" /><span>{title(o.type)}: {o.note}</span></div>)}
-              {a.knowledge_gaps.map((g: string, i: number) => <div key={i} className="row small" style={{ flexWrap: 'nowrap' }}><Lightbulb size={14} style={{ color: 'var(--info)' }} /><span>Knowledge gap: {g}</span></div>)}
-            </Widget>}
             </> : <Widget icon={Sparkles} title="Analysis"><span className="muted small">The analysis appears here when the call is processed.</span></Widget>}
           </div>
         </div>
