@@ -254,7 +254,7 @@ class Toolbox:
     def unhappy_without_callback(self, limit=50, **_):
         from ..services.insights import unhappy_without_callback
         calls = unhappy_without_callback(self.c, 30)                 # always the Home page's window, so the numbers agree
-        for x in calls[:15]:
+        for x in calls:                                              # every one of them, not a sample
             self._brief(x)
             if x.id not in self.featured:
                 self.featured.append(x.id)

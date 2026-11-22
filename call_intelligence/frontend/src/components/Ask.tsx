@@ -89,6 +89,16 @@ function Steps({ steps, done, t }: { steps: { label: string; done: boolean }[]; 
   return <div className="steps">{steps.map((s, j) => <span key={j} className="step">{s.done ? <Check size={14} /> : <Loader2 size={14} className="spin" />}{s.label}</span>)}</div>
 }
 
+/** The calls behind an answer: the first 10, then a button that shows the rest. */
+function CitedCalls({ calls, lang, render }: { calls: any[]; lang: Lang; render: (c: any) => ReactNode }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? calls : calls.slice(0, 10)
+  return <div className="cited">{shown.map(render)}
+    {calls.length > 10 && <button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setAll(a => !a)}>
+      {all ? (lang === 'ar' ? 'عرض أقل' : 'Show fewer') : (lang === 'ar' ? `عرض الباقي (${calls.length - 10})` : `View the remaining ${calls.length - 10}`)}</button>}
+  </div>
+}
+
 export function AskPanel({ page = false, onClose, initial }: { page?: boolean; onClose?: () => void; initial?: { q?: string; n: number } }) {
   const { ent, base } = useEnt()
   const { me } = useAuth()
@@ -196,11 +206,11 @@ export function AskPanel({ page = false, onClose, initial }: { page?: boolean; o
               {busy && i === turns.length - 1 && !x.answer && !x.error && !x.steps?.length && <div className="steps"><span className="step"><Loader2 size={14} className="spin" />{t.thinking}</span></div>}
               {x.answer && <div><AnswerText text={x.answer.text} calls={x.answer.calls} onCall={openCall} /></div>}
               {x.error && <div className="pill bad" style={{ height: 'auto', padding: '8px 10px', whiteSpace: 'normal' }}>{x.error}</div>}
-              {!!x.answer?.calls?.length && <div className="cited">{x.answer.calls.map((c: any) =>
+              {!!x.answer?.calls?.length && <CitedCalls calls={x.answer.calls} lang={lang} render={(c: any) =>
                 <a key={c.id} onClick={() => openCall(c.id)} style={{ cursor: 'pointer' }}>
                   {c.mood_end ? <MoodBadge value={c.mood_end} /> : <ResolutionBadge value={c.resolution} />}
                   <span className="clamp1"><span dir="auto">{c.customer || 'Customer'}</span><span className="muted"> · {c.reason || c.summary}</span></span>
-                  <span className="go">{t.call}<ArrowUpRight size={12} /></span></a>)}</div>}
+                  <span className="go">{t.call}<ArrowUpRight size={12} /></span></a>} />}
               {x.answer?.links?.length ? <div className="row" style={{ gap: 6 }}>{x.answer.links.map((l, j) => <button key={j} className="btn sm" onClick={() => openLink(l)}><ExternalLink size={14} />{l.label}</button>)}</div> : null}
               {x.answer?.proposals?.filter((p: any) => !p.dismissed).map((p: any, j: number) => <div key={j} className="proposal">
                 <div className="ph"><SparklesFill size={16} />{t.proposed}: {ACTION_LABEL[p.type] || p.type} · {t.calls(p.call_ids.length)}</div>
