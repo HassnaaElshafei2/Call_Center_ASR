@@ -83,8 +83,8 @@ export default function CallDetail() {
           <div><b>{({ queued: 'Queued', waiting_asr: 'Waiting for the transcription service', transcribing: 'Transcribing', analyzing: 'Analysing', failed: 'Processing failed' } as any)[c.status]}</b>
             <div className="small muted">{c.status_detail}</div></div></div>}
 
-        <div className="split">
-          <div className="stack" style={{ gap: 18 }}>
+        <div className="split fill">
+          <div className="stack call-left" style={{ gap: 18 }}>
             <section className="card player">
               <div className="row">
                 <button className="btn icon primary" disabled={!audioUrl} onClick={toggle} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
@@ -103,8 +103,8 @@ export default function CallDetail() {
               {audioUrl && <audio ref={audio} src={audioUrl} preload="metadata" onTimeUpdate={e => setT(e.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />}
             </section>
 
-            <Widget icon={MessageSquareQuote} title="Transcript" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
-              {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript">
+            <Widget icon={MessageSquareQuote} title="Transcript" className="grow" sub={`${c.turns.length} turns · Egyptian Arabic · ${transcribedBy(c.asr_model)}`}>
+              {!c.turns.length ? <Empty title="No transcript yet" /> : <div className="transcript-box"><div className="transcript">
                 {c.turns.map((x: any) => {
                   const mood = x.mood && MOODS[x.mood]
                   return <div key={x.idx} ref={el => { turnRefs.current[x.idx] = el }} className={`turn ${current === x.idx ? 'now' : ''} ${flash === x.idx ? 'flash' : ''}`}
@@ -122,9 +122,9 @@ export default function CallDetail() {
                     </div>
                   </div>
                 })}
-              </div>}
+              </div></div>}
             </Widget>
-            {a && <div className="grid g2" style={{ alignItems: 'start' }}>
+            {a && <div className="grid g2" style={{ alignItems: 'stretch' }}>
               <Widget icon={Target} title="Key moments" sub="Turning points; click to jump">
                 {a.moments.map((m: any, i: number) => <button key={i} className="insight" style={{ border: 0, background: 'none', textAlign: 'left', gridTemplateColumns: '12px 1fr auto' }} onClick={() => jump(m.turn)}>
                   <span className="dot" style={{ marginTop: 6, background: MOMENT_COLOR[m.type] }} /><p><b>{title(m.type)}</b> · <span className="muted">{m.note}</span></p><span className="tiny faint num">{dur(c.turns.find((x: any) => x.idx === m.turn)?.start)}</span></button>)}
