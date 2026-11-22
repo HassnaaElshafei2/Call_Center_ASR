@@ -6,3 +6,7 @@ logs/
 venvs/
 __pycache__/
 .env
+
+# models downloaded by the ASR comparison app (speech enhancement checkpoints, Hugging Face cache)
+checkpoints/
+model_cache/
