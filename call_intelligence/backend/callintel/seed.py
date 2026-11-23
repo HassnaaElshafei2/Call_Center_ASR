@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from .config import settings
+from . import adib
 from .models import Agent, Call, Category, Customer, Enterprise, Membership, Scorecard, Team, Turn, User
 from .security import hash_password
 from .services import identity, jobs
@@ -95,6 +96,8 @@ def seed_base(db: Session, demo_users: bool = True) -> None:
             db.add(Scorecard(enterprise_id=ent, version=1, active=True,
                              kpis=[{"code": c, "name": n, "description": d, "weight": w, "critical": cr}
                                    for c, n, d, w, cr in kpis]))
+    db.flush()
+    adib.apply_scoresheet(db)  # ADIB's own call categories and mistake-based scoresheet
     for ent, names in TEAMS.items():
         for n in names:
             if not db.query(Team).filter_by(enterprise_id=ent, name=n).first():

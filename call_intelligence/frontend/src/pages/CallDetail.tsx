@@ -96,7 +96,7 @@ export default function CallDetail() {
           <Meta label="Agent" value={c.agent ? <Link to={`${base}/agents/${c.agent.id}`} style={{ color: 'var(--brand-text)' }}>{c.agent.name}</Link> : '–'} />
           <Meta label="Reason" value={c.reason ? catName(c.reason) : '–'} />
           <Meta label="Outcome" value={<ResolutionBadge value={c.resolution} />} /><Meta label="Predicted satisfaction" value={<Stars value={c.satisfaction} />} />
-          {c.qa_score != null && <Meta label="QA score" value={<b className="num">{c.qa_score}{c.critical_fail && <span className="pill bad" style={{ marginLeft: 6 }}>critical miss</span>}</b>} />}
+          {c.qa_score != null && <Meta label="QA score" value={<b className="num">{c.qa_score}{c.critical_fail && <span className="pill bad" style={{ marginLeft: 6 }}>{a?.qa_mistakes ? 'critical mistake' : 'critical miss'}</span>}</b>} />}
           <div className="row right">{c.repeat_of && <span className="pill info"><Repeat2 size={12} />Repeat call</span>}<RiskBadge value={c.churn_risk} />
             {c.compliance_issue && <span className="pill bad"><ShieldAlert size={12} />Compliance</span>}{c.needs_review && <span className="pill warn"><Flag size={12} />Needs review</span>}</div>
         </div>
@@ -192,11 +192,15 @@ export default function CallDetail() {
             {a.moments.map((m: any, i: number) => <button key={i} className="insight" style={{ border: 0, background: 'none', textAlign: 'left', gridTemplateColumns: '12px 1fr auto' }} onClick={() => jump(m.turn)}>
               <span className="dot" style={{ marginTop: 6, background: MOMENT_COLOR[m.type] }} /><p><b>{title(m.type)}</b> · <span className="muted">{m.note}</span></p><span className="tiny faint num">{dur(c.turns.find((x: any) => x.idx === m.turn)?.start)}</span></button>)}
           </Widget>
+          {a.qa_mistakes ? <Widget icon={ClipboardCheck} title="QA mistakes" sub={c.qa_score != null ? `Score ${c.qa_score} of 100` : 'Not scored'}>
+            <QaMistakes found={a.qa_mistakes} items={c.qa_items || []} score={c.qa_score} critical={c.critical_fail}
+              at={(t: number | null) => t == null ? '' : dur(c.turns.find((x: any) => x.idx === t)?.start)} jump={jump} />
+          </Widget> :
           <Widget icon={ClipboardCheck} title="QA scorecard" sub={c.qa_score != null ? `Score ${c.qa_score} of 100` : 'Not scored'}>
             {a.scorecard.map((s: any) => <div key={s.kpi} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap', cursor: s.turn != null ? 'pointer' : 'default' }} onClick={() => s.turn != null && jump(s.turn)}>
               <span className={`pill ${s.result === 'pass' ? 'good' : s.result === 'fail' ? 'bad' : 'plain'}`} style={{ width: 54, justifyContent: 'center' }}>{s.result === 'pass' ? <Check size={12} /> : s.result === 'fail' ? <X size={12} /> : null}{s.result}</span>
               <span><b>{kpiName(s.kpi)}</b><span className="muted" style={{ display: 'block' }}>{s.note}</span></span></div>)}
-          </Widget>
+          </Widget>}
           <Widget icon={ListTodo} title="Recommended actions" sub="Suggested by the analysis; a person decides">
             {!c.actions.length && <span className="small muted">Nothing to follow up.</span>}
             {c.actions.map((x: any) => <div key={x.id} className="card" style={{ padding: 12, boxShadow: 'none', cursor: 'pointer' }} onClick={() => setActionOpen(x.id)}>
@@ -292,4 +296,33 @@ function transcribedBy(model: string): string {
   if (!model) return 'imported transcript'
   if (model.startsWith('ElevenLabs')) return 'transcribed by ElevenLabs (stand-in)'
   return 'transcribed by our fine-tuned model'
+}
+
+// ADIB-style scoresheet: the mistakes found, by severity, each taking its points off 100
+const SEVERITIES: [string, string, string][] = [['compliance', 'Compliance Critical', 'bad'], ['business', 'Business Critical', 'bad'],
+  ['end_user', 'End User', 'warn'], ['non_critical', 'Non Critical', 'plain']]
+function QaMistakes({ found, items, score, critical, at, jump }: { found: any[], items: any[], score: number | null, critical: boolean,
+  at: (t: number | null) => string, jump: (t: number) => void }) {
+  const by = Object.fromEntries(items.map(k => [k.code, k]))
+  const rows = found.map(m => ({ ...m, item: by[m.code] || { name: m.code, severity: 'non_critical', weight: 0 } }))
+    .sort((x, y) => SEVERITIES.findIndex(v => v[0] === x.item.severity) - SEVERITIES.findIndex(v => v[0] === y.item.severity))
+  if (!rows.length) return <div className="row small" style={{ flexWrap: 'nowrap' }}><span className="pill good"><Check size={12} />Clean</span>
+    <span>No mistakes found{items.length ? ` (${items.length} checked)` : ''}. Score 100.</span></div>
+  return <>
+    <div className="small" style={{ font: '500 13px/20px var(--font)' }}>
+      <span className="num">100 {rows.map((r, i) => <span key={i}>− {r.item.weight} </span>)}= {score}</span>
+      {critical && <span className="pill bad" style={{ marginLeft: 8 }}>Critical mistake · sent to review</span>}
+    </div>
+    {SEVERITIES.map(([sev, label, tone]) => { const g = rows.filter(r => r.item.severity === sev)
+      if (!g.length) return null
+      return <div key={sev} style={{ display: 'grid', gap: 6 }}>
+        <div className="row tiny"><span className={`pill ${tone}`}>{label}</span><span className="muted">−{g[0].item.weight} points each</span></div>
+        {g.map(r => <div key={r.code} className="row small" style={{ alignItems: 'flex-start', flexWrap: 'nowrap', cursor: r.turn != null ? 'pointer' : 'default' }}
+          onClick={() => r.turn != null && jump(r.turn)} title={r.turn != null ? 'Jump to this moment' : undefined}>
+          <span className="pill bad num" style={{ width: 44, justifyContent: 'center', flex: 'none' }}>−{r.item.weight}</span>
+          <span style={{ minWidth: 0, flex: 1 }}><b>{r.item.name}</b><span className="muted" style={{ display: 'block' }} dir="auto">{r.note}</span></span>
+          {r.turn != null && <span className="tiny faint num" style={{ flex: 'none' }}>{at(r.turn)}</span>}
+        </div>)}
+      </div> })}
+  </>
 }

@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from ..config import settings
 from ..deps import Ctx, ctx
-from ..models import RESOLUTION, Action, Agent, Call, CallAnalysis, Correction, Promise, Turn
+from ..models import RESOLUTION, Action, Agent, Call, CallAnalysis, Correction, Promise, Scorecard, Turn
 from ..services import identity, jobs, storage
 from .common import CallFilters, apply_filters, call_filters, call_row
 
@@ -45,6 +45,9 @@ def call_detail(call_id: str, c: Ctx = Depends(ctx)):
     out["turns"] = [{"idx": t.idx, "speaker": t.speaker, "start": t.start, "end": t.end, "text": t.text,
                      "confidence": t.confidence, "mood": t.mood, "edited": t.edited} for t in call.turns]
     out["analysis"] = an.data if an else None
+    # the scorecard items this call was scored against (names, severity, points), for the QA card
+    card = c.db.get(Scorecard, an.scorecard_id) if an and an.scorecard_id else None
+    out["qa_items"] = card.kpis if card else []
     out["analysis_meta"] = {"model": an.model, "prompt_version": an.prompt_version, "at": an.created_at.isoformat(),
                             "second_opinion": an.second_opinion} if an else None
     out["metrics"] = call.metrics

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
 
+from ..adib import SEVERITY
 from ..deps import Ctx, ctx
 from ..models import ROLES, Agent, AuditLog, Call, Category, Enterprise, Job, Membership, Scorecard, Team, User
 from ..security import hash_password
@@ -151,6 +152,10 @@ def publish_scorecard(body: ScorecardIn, c: Ctx = Depends(ctx)):
         codes.add(k["code"])
         k["weight"] = float(k.get("weight", 1))
         k["critical"] = bool(k.get("critical", False))
+        if "severity" in k:  # a scoresheet of mistakes: the severity decides the label and whether it flags the call
+            if k["severity"] not in SEVERITY:
+                raise HTTPException(400, f"Unknown severity: {k['severity']}")
+            k["description"], _, k["critical"] = SEVERITY[k["severity"]]
     last = c.db.query(func.max(Scorecard.version)).filter_by(enterprise_id=body.enterprise).scalar() or 0
     c.db.query(Scorecard).filter_by(enterprise_id=body.enterprise).update({"active": False})
     s = Scorecard(enterprise_id=body.enterprise, version=last + 1, active=True, kpis=body.kpis)

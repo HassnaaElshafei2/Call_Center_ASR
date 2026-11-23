@@ -20,7 +20,7 @@ from .identity import link_customer
 from .metrics import measure
 
 log = logging.getLogger(__name__)
-PROMPT_VERSION = "2026-11-20.2"
+PROMPT_VERSION = "2026-11-23.1"
 MOMENTS = ("problem_stated", "frustration", "escalation_request", "hold", "solution_offered", "resolution",
            "promise", "gratitude", "upsell", "complaint", "compliance_issue", "confusion")
 OPPORTUNITY = ("upsell", "cross_sell", "retention_offer", "loyalty", "referral")
@@ -31,7 +31,12 @@ def _arr(items: dict, max_items: int) -> dict:
                                        "additionalProperties": False}, "maxItems": max_items}
 
 
-def schema(categories: list[str], kpis: list[str]) -> dict:
+def mistake_mode(kpis: list[dict]) -> bool:
+    """A scorecard of mistakes (ADIB's scoresheet): each item has a severity and takes its points off 100."""
+    return bool(kpis) and all("severity" in k for k in kpis)
+
+
+def schema(categories: list[str], kpis: list[str], mistakes: bool = False) -> dict:
     s = lambda: {"type": "string"}
     turns = {"type": "array", "items": {"type": "integer"}, "maxItems": 4}
     nullable = lambda t: {"type": [t, "null"]}
@@ -56,9 +61,11 @@ def schema(categories: list[str], kpis: list[str]) -> dict:
         "customer": {"type": "object", "additionalProperties": False, "required": ["name", "phone"],
                      "properties": {"name": nullable("string"), "phone": nullable("string")}},
         "agent_name": nullable("string"),
-        "scorecard": _arr({"kpi": {"type": "string", "enum": kpis or ["none"]},
-                           "result": {"type": "string", "enum": ["pass", "fail", "na"]},
-                           "turn": nullable("integer"), "note": s()}, max(1, len(kpis))),
+        **({"qa_mistakes": _arr({"code": {"type": "string", "enum": kpis}, "turn": nullable("integer"), "note": s()},
+                                 len(kpis))} if mistakes else
+           {"scorecard": _arr({"kpi": {"type": "string", "enum": kpis or ["none"]},
+                               "result": {"type": "string", "enum": ["pass", "fail", "na"]},
+                               "turn": nullable("integer"), "note": s()}, max(1, len(kpis)))}),
         "promises": _arr({"text": s(), "due_in_days": nullable("integer"), "turn": {"type": "integer"}}, 5),
         "opportunities": _arr({"type": {"type": "string", "enum": list(OPPORTUNITY)}, "note": s(),
                                "turn": {"type": "integer"}}, 4),
@@ -94,9 +101,7 @@ Rules:
   "frustrated", not "calm".
 - mood_changes: only customer turns where their mood clearly changes. moments: the turning points of the call.
 - customer.name / customer.phone: only if the customer says them (phone as digits only, e.g. "01012345678"), else null.
-- scorecard: one entry per KPI listed below; "na" when the KPI doesn't apply to this call. Score like a strict QA
-  auditor: "pass" only if the agent clearly did it; anything skipped, rushed, unclear or wrong is "fail" with the
-  reason. Most real calls miss at least one item.
+{qa_rule}
 - risks.churn: "high" if the customer threatens to leave, close the account or go to a competitor, or is angry about
   a repeated failure; "medium" if they are unhappy and still waiting for a fix.
 - promises: commitments the agent or company made (callback, technician visit, refund), with days until due if said.
@@ -107,7 +112,16 @@ Rules:
 
 Call reasons (reason_code): {categories}
 
-QA scorecard KPIs: {kpis}"""
+{qa_title}: {kpis}"""
+
+QA_KPI_RULE = """- scorecard: one entry per KPI listed below; "na" when the KPI doesn't apply to this call. Score like a strict QA
+  auditor: "pass" only if the agent clearly did it; anything skipped, rushed, unclear or wrong is "fail" with the
+  reason. Most real calls miss at least one item."""
+QA_MISTAKE_RULE = """- qa_mistakes: the agent's mistakes in this call, from the QA mistake list below only, each at most once, with the
+  turn where it happens (null if it is something missing from the whole call) and a short note saying what the agent
+  did or didn't do. Audit like a strict QA reviewer, but only list a mistake the transcript clearly shows; speech
+  recognition errors and garbled or repeated transcript text are not the agent's mistakes.
+  An empty list is right for a clean call."""
 
 
 def transcript_text(call: Call) -> str:
@@ -119,17 +133,20 @@ def analyze_call(db: Session, call: Call, second_opinion: bool = True) -> CallAn
     cats = db.query(Category).filter_by(enterprise_id=ent.id, active=True).order_by(Category.id).all()
     card = db.query(Scorecard).filter_by(enterprise_id=ent.id, active=True).order_by(Scorecard.version.desc()).first()
     kpis = card.kpis if card else []
+    mistakes = mistake_mode(kpis)
     system = SYSTEM.format(
         company=ent.name, kind=ent.kind,
         categories="; ".join(f"{c.code} = {c.name}" + (f" ({c.description})" if c.description else "") for c in cats),
-        kpis="; ".join(f"{k['code']} = {k['name']}: {k.get('description', '')}" for k in kpis) or "none")
+        kpis="; ".join(f"{k['code']} = {k['name']}: {k.get('description', '')}" for k in kpis) or "none",
+        qa_rule=QA_MISTAKE_RULE if mistakes else QA_KPI_RULE,
+        qa_title="QA mistake list (code = mistake: severity)" if mistakes else "QA scorecard KPIs")
     text = transcript_text(call)
     if not text:
         raise ValueError("the call has no transcript")
     t0 = time.time()
     data = llm.chat_json([{"role": "system", "content": system},
                           {"role": "user", "content": f"Transcript:\n{text}"}],
-                         schema([c.code for c in cats], [k["code"] for k in kpis]), max_tokens=4000, temperature=0.1)
+                         schema([c.code for c in cats], [k["code"] for k in kpis], mistakes), max_tokens=4000, temperature=0.1)
     seconds = time.time() - t0
     second = verify(call, data, text) if second_opinion and _high_impact(data) else None
     rec = CallAnalysis(call_id=call.id, model=llm.settings().llm_model, prompt_version=PROMPT_VERSION,
@@ -167,7 +184,26 @@ def verify(call: Call, d: dict, text: str) -> dict | None:
         return None
 
 
+def mistakes_to_scorecard(d: dict, kpis: list[dict]) -> None:
+    """Score a mistake list: 100 minus the points of each mistake (once per call), never below 0. Also fills
+    d["scorecard"] (fail = the mistake happened) so agent pages and coaching read it like any scorecard."""
+    by = {k["code"]: k for k in kpis}
+    seen, found = set(), []
+    for m in d.get("qa_mistakes") or []:
+        if m["code"] in by and m["code"] not in seen:
+            seen.add(m["code"])
+            found.append(m)
+    d["qa_mistakes"] = found
+    d["scorecard"] = [{"kpi": k["code"], "result": "fail" if k["code"] in seen else "pass",
+                       "turn": next((m["turn"] for m in found if m["code"] == k["code"]), None),
+                       "note": next((m["note"] for m in found if m["code"] == k["code"]), "")} for k in kpis]
+
+
 def _qa(scorecard: list[dict], kpis: list[dict]) -> tuple[float | None, bool]:
+    if mistake_mode(kpis):
+        failed = {r["kpi"] for r in scorecard if r["result"] == "fail"}
+        items = [k for k in kpis if k["code"] in failed]
+        return max(0.0, 100.0 - sum(float(k["weight"]) for k in items)), any(k.get("critical") for k in items)
     weights = {k["code"]: float(k.get("weight", 1)) for k in kpis}
     critical = {k["code"] for k in kpis if k.get("critical")}
     got = tot = 0.0
@@ -191,6 +227,8 @@ def apply(db: Session, call: Call, d: dict, kpis: list[dict], second: dict | Non
     call.mood_start, call.mood_end = d["sentiment"]["mood_start"], d["sentiment"]["mood_end"]
     call.churn_risk, call.escalation_risk = d["risks"]["churn"], d["risks"]["escalation"]
     call.compliance_issue = bool(d["risks"]["compliance_issues"])
+    if mistake_mode(kpis) and "qa_mistakes" in d:
+        mistakes_to_scorecard(d, kpis)
     call.qa_score, call.critical_fail = _qa(d["scorecard"], kpis)
     call.metrics = measure(call.turns)
 
@@ -210,7 +248,7 @@ def apply(db: Session, call: Call, d: dict, kpis: list[dict], second: dict | Non
     if second and not second.get("agree", True):
         reasons.append(f"second opinion disagrees ({second.get('resolution')}, {second.get('satisfaction')}/5)")
     if call.critical_fail:
-        reasons.append("critical KPI failed")
+        reasons.append("critical mistake" if mistake_mode(kpis) else "critical KPI failed")
     call.needs_review = bool(reasons) and call.reviewed_at is None
     call.review_reason = "; ".join(reasons)[:200]
 

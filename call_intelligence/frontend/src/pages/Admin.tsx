@@ -139,6 +139,7 @@ function ScorecardEditor({ ent, enterprise, card, history, onSaved }: any) {
   useEffect(() => setKpis(card.kpis), [card])
   const upd = (i: number, k: string, v: any) => setKpis(ks => ks.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
   const changed = JSON.stringify(kpis) !== JSON.stringify(card.kpis)
+  if (card.kpis.length && card.kpis.every((k: any) => k.severity)) return <MistakeEditor {...{ ent, enterprise, card, history, onSaved, kpis, setKpis, upd, changed }} />
   return <Widget icon={ClipboardCheck} title={`${enterprise.name}: scorecard v${card.version}`} sub={`Publishing makes v${card.version + 1}; calls keep the version that scored them · ${history.length} version${history.length > 1 ? 's' : ''}`}
     actions={<><button className="btn sm" onClick={() => setKpis([...kpis, { code: '', name: '', description: '', weight: 1, critical: false }])}><Plus size={13} />Item</button>
       <button className="btn sm primary" disabled={!changed} onClick={async () => { await api(`/e/${ent}/admin/scorecards`, { method: 'POST', json: { enterprise: enterprise.id, kpis } }); onSaved() }}><Save size={13} />Publish</button></>}>
@@ -149,6 +150,30 @@ function ScorecardEditor({ ent, enterprise, card, history, onSaved }: any) {
         <td><input className="input" style={{ width: 70 }} type="number" step={0.5} min={0} value={k.weight} onChange={e => upd(i, 'weight', Number(e.target.value))} /></td>
         <td><input type="checkbox" checked={!!k.critical} onChange={e => upd(i, 'critical', e.target.checked)} /></td>
         <td><button className="btn sm icon ghost danger" onClick={() => setKpis(kpis.filter((_, j) => j !== i))} aria-label="Remove"><Trash2 size={14} /></button></td></tr>)}</tbody></table>
+  </Widget>
+}
+
+// a scoresheet of mistakes (ADIB's): the score is 100 minus the points of each mistake found, never below 0
+const SEV: [string, string, boolean][] = [['compliance', 'Compliance Critical', true], ['business', 'Business Critical', true],
+  ['end_user', 'End User', true], ['non_critical', 'Non Critical', false]]
+function MistakeEditor({ ent, enterprise, card, history, onSaved, kpis, setKpis, upd, changed }: any) {
+  const pts = (sev: string) => kpis.find((k: any) => k.severity === sev)?.weight ?? ''
+  const setPts = (sev: string, v: number) => setKpis((ks: any[]) => ks.map(k => (k.severity === sev ? { ...k, weight: v } : k)))
+  const setSev = (i: number, sev: string) => { const [, label, crit] = SEV.find(x => x[0] === sev)!
+    setKpis((ks: any[]) => ks.map((x, j) => (j === i ? { ...x, severity: sev, description: label, critical: crit, weight: pts(sev) || x.weight } : x))) }
+  return <Widget icon={ClipboardCheck} title={`${enterprise.name}: QA scoresheet v${card.version}`}
+    sub={`Score = 100 minus the points of each mistake found (once per call), never below 0 · ${kpis.length} mistakes · publishing makes v${card.version + 1}; calls keep the version that scored them · ${history.length} version${history.length > 1 ? 's' : ''}`}
+    actions={<><button className="btn sm" onClick={() => setKpis([...kpis, { code: '', name: '', severity: 'non_critical', description: 'Non Critical', weight: pts('non_critical') || 5, critical: false }])}><Plus size={13} />Mistake</button>
+      <button className="btn sm primary" disabled={!changed} onClick={async () => { await api(`/e/${ent}/admin/scorecards`, { method: 'POST', json: { enterprise: enterprise.id, kpis } }); onSaved() }}><Save size={13} />Publish</button></>}>
+    <div className="row" style={{ gap: 16, flexWrap: 'wrap' }}>{SEV.map(([sev, label, crit]) => <label key={sev} className="field" style={{ minWidth: 150 }}>
+      <span>{label}: points off{crit ? ' · flags the call' : ''}</span>
+      <input className="input" style={{ width: 90 }} type="number" min={0} max={100} value={pts(sev)} onChange={e => setPts(sev, Number(e.target.value))} /></label>)}</div>
+    <table className="table"><thead><tr><th>Mistake</th><th>Severity</th><th>Points off</th><th /></tr></thead>
+      <tbody>{kpis.map((k: any, i: number) => <tr key={i}>
+        <td><input className="input" style={{ width: '100%' }} value={k.name} onChange={e => upd(i, 'name', e.target.value)} />{!k.code && <input className="input" style={{ width: '100%', marginTop: 4 }} placeholder="code" value={k.code} onChange={e => upd(i, 'code', e.target.value)} />}</td>
+        <td><select className="input" value={k.severity} onChange={e => setSev(i, e.target.value)}>{SEV.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+        <td><input className="input" style={{ width: 70 }} type="number" min={0} max={100} value={k.weight} onChange={e => upd(i, 'weight', Number(e.target.value))} /></td>
+        <td><button className="btn sm icon ghost danger" onClick={() => setKpis(kpis.filter((_: any, j: number) => j !== i))} aria-label="Remove"><Trash2 size={14} /></button></td></tr>)}</tbody></table>
   </Widget>
 }
 

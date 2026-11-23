@@ -45,6 +45,8 @@ def main(argv=None):
     imp.add_argument("--no-analysis", action="store_true")
     imp.add_argument("--only", choices=["real", "synthetic", "demo-audio"], action="append")
     sub.add_parser("adopt-export", help="after loading a database export: passwords and phone matching from this .env")
+    r = sub.add_parser("reanalyze", help="queue a fresh analysis of an enterprise's calls (e.g. after a new scorecard)")
+    r.add_argument("--enterprise", required=True)
     a = sub.add_parser("analyze-now")
     a.add_argument("--workers", type=int, default=4)
     u = sub.add_parser("create-user")
@@ -112,6 +114,17 @@ def main(argv=None):
             for cu in db.query(Customer).filter(Customer.phone_full != ""):
                 cu.phone_hash, n = hash_phone(cu.phone_full), n + 1
         print(f"passwords set from this .env ({st.admin_email} and the demo users); {n} customer phone numbers re-keyed")
+    elif args.cmd == "reanalyze":
+        from .models import Call, Job
+        from .services import jobs
+        with session_scope() as db:
+            queued = {j.payload.get("call_id") for j in db.query(Job).filter_by(kind="analyze_call").filter(Job.status.in_(["pending", "running"]))}
+            n = 0
+            for call in db.query(Call).filter_by(enterprise_id=args.enterprise).filter(Call.status.in_(["done", "failed"])):
+                if call.turns and call.id not in queued:
+                    jobs.enqueue(db, "analyze_call", {"call_id": call.id})
+                    n += 1
+        print(f"queued {n} {args.enterprise} calls; the worker analyses them (or run: manage analyze-now)")
     elif args.cmd == "analyze-now":
         from .worker import run_one
         done = 0
