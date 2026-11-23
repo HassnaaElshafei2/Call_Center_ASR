@@ -151,7 +151,7 @@ export default function CallDetail() {
               <Widget icon={Gauge} title="Measured behaviour" sub="From timings, not the model" style={canReview ? undefined : { gridColumn: '1 / -1' }}>
                 <Behaviour m={c.metrics} />
               </Widget>
-              {canReview && <ReviewCard c={c} ent={ent} cats={(meta?.categories || []).filter((x: any) => x.enterprise === c.enterprise)} onDone={refresh} />}
+              {canReview && <ReviewCard c={c} ent={ent} cats={(meta?.categories || []).filter((x: any) => x.enterprise === c.enterprise && (x.active || x.code === c.reason_code))} onDone={refresh} />}
             </div>}
           </div>
 
